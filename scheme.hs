@@ -90,7 +90,7 @@ data WExpr =
     | FunW [String] WExpr
     | AppW WExpr [WExpr]
     | WithW String WExpr WExpr
-    | FunAppW String [WExpr]
+    -- | FunAppW String [WExpr]
     | ListW [WExpr]
     | AndW [WExpr]
     | OrW [WExpr]
@@ -122,7 +122,7 @@ data Expr =
     | Cond Expr Expr Expr
     | Fun String Expr
     | App Expr Expr
-    | FunApp Expr [Expr]
+    -- | FunApp Expr [Expr]
     | ListE [Expr]
     | And Expr Expr
     | Or Expr Expr
@@ -148,6 +148,8 @@ data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
 
 -- Replace every instance of [FunDef] with HashMap
 data FunDef = Fundef String [String] Expr deriving (Eq, Show)
+
+data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
 data ExprValue =
     NumV Integer
@@ -185,39 +187,40 @@ getAllExprs (List x) = (filter (\e -> (not (isFunDef e))) x)
 getAllExprs _ = error "idk"
 
 
-parseFunDef :: LispVal -> FunDef
+-- parseFunDef :: LispVal -> FunDef
+-- parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
+--     (Fundef funName (map extractSymbol args) (compile (parser body)))
+-- parseFunDef _ = error "parseFunDef - malformed function"
+
+-- parseFunDefs :: [LispVal] -> [FunDef]
+-- parseFunDefs x = (map parseFunDef x)
+
+-- getFunDefs :: String -> [FunDef]
+-- getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
+
+
+parseFunDef :: LispVal -> GlobalFunDef
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
-    (Fundef funName (map extractSymbol args) (compile (parser body)))
+    (FundefG funName (compile (FunW (map extractSymbol args) (parser body))))
 parseFunDef _ = error "parseFunDef - malformed function"
 
-parseFunDefs :: [LispVal] -> [FunDef]
+parseFunDefs :: [LispVal] -> [GlobalFunDef]
 parseFunDefs x = (map parseFunDef x)
 
-getFunDefs :: String -> [FunDef]
+getFunDefs :: String -> [GlobalFunDef]
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
 
-paramName body ds
+{-
 
-checkDSforFunc :: String -> DefSub -> FunDef
-checkDSforFunc _ (MtSub) = error ("interp: undefined function: " ++ funName)
-checkDSforFunc s1 (ASub s2 () rest) =
-    if s1 == s2
-        then (FunDef s2 )
-        else (checkDSforFunc s1 rest)
-lookupDS _ _ = error "checkDSforFunc malformed"
+(FundefG funName (compile (FunW (map extractSymbol args) (compile parser body))))
 
-lookupFundef :: String -> [FunDef] -> DefSub -> FunDef
-lookupFundef funName [] ds = error ("interp: undefined function: " ++ funName)
-lookupFundef funName ((Fundef name args body):xs) ds = 
-    if funName == name
-        then (Fundef name args body)
-        else (lookupFundef funName xs)
+-}
 
 
 -- TODO come back here pls
-callGlobalFunc :: String -> [LispVal] -> WExpr
-callGlobalFunc s lv = (FunAppW s (map parser lv))
+-- callGlobalFunc :: String -> [LispVal] -> WExpr
+-- callGlobalFunc s lv = (FunAppW s (map parser lv))
 
 
 switchSymbol :: String -> [LispVal] -> WExpr
@@ -248,7 +251,7 @@ switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
 -- switchSymbol "map" lv = (MapW (parser (head lv)) (parser (last lv)))
 -- switchSymbol "filter" lv = (FilterW (parser (head lv)) (parser (last lv)))
 -- switchSymbol "begin" lv = (BeginW (map parser lv))
-switchSymbol s lv = (FunAppW s (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
+switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 -- make fundefs follow the same patterns
 
 -- switchSymbol _ lv = (AppW (parser (lv !! 0)) (map parser (tail lv)))
@@ -340,7 +343,7 @@ compile (FunW paramNames body) =
 
 compile (FirstW lst) = (First (compile lst))
 compile (RestW lst) = (Rest (compile lst))
-compile (FunAppW funName args) = (FunApp (Sym funName) (map compile args))
+-- compile (FunAppW funName args) = (FunApp (Sym funName) (map compile args))
 compile (ListW vals) = (ListE (map compile vals))
 compile (ConsW l r) = (Cons (compile l) (compile r))
 compile (AppendW l r) = (Append (compile l) (compile r))
@@ -353,13 +356,30 @@ compile (EmptyW lst) = (EmptyE (compile lst))
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)
 
-lookupDS :: LispVal -> DefSub -> ExprValue
-lookupDS _ (MtSub) = error "interp - free identifier"
-lookupDS (Symbol s1) (ASub s2 val rest) = 
+-- Lookup symbol to see if in DS, if not check global function definitions
+lookupDS :: LispVal -> [GlobalFunDef] -> DefSub -> ExprValue
+lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
+lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
     if s1 == s2
         then val
-        else (lookupDS (Symbol s1) rest)
-lookupDS _ _ = error "lookupDS malformed"
+        else (lookupDS (Symbol s1) funDefs rest)
+lookupDS _ _ _ = error "lookupDS malformed"
+
+
+lookupFundefs :: String -> [GlobalFunDef] -> Expr
+lookupFundefs s [] = error ("interp - free identifier" ++ s)
+lookupFundefs s ((FundefG funName closure):xs) = 
+    if funName == s
+        then closure
+        else (lookupFundefs s xs)
+
+lookupFundef :: String -> [FunDef] -> FunDef
+lookupFundef funName [] = error ("interp: undefined function: " ++ funName)
+lookupFundef funName ((Fundef name args body):xs) = 
+    if funName == name
+        then (Fundef name args body)
+        else (lookupFundef funName xs)
+
 
 -- TODO abstract numOp to any operator, use generically in place of all of these
 -- TRY TO FIX THIS
@@ -393,7 +413,7 @@ evalEquality (NumV l) (NumV r) = BoolV (l == r)
 evalEquality (BoolV l) (BoolV r) = BoolV (l == r)
 evalEquality _ _ = BoolV False
 
-appEval :: ExprValue -> ExprValue -> [FunDef] -> ExprValue
+appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> ExprValue
 appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
@@ -403,16 +423,19 @@ matchStrToBool "#f" = False
 matchStrTobool _ = error "Boolean malformed"
 
 
-defSubHelper :: [String] -> [FunDef] -> [Expr] -> DefSub -> DefSub
+
+
+
+defSubHelper :: [String] -> [GlobalFunDef] -> [Expr] -> DefSub -> DefSub
 defSubHelper [] funDefs [] ds = (MtSub)
 defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs (b:bs) ds = (ASub x (interp b funDefs ds) (defSubHelper xs funDefs bs ds))
 
 
-funAppHelper :: [FunDef] -> FunDef -> [Expr] -> DefSub -> ExprValue
-funAppHelper funDefs (Fundef funName args body) argExprs ds = 
-    (interp body funDefs (defSubHelper args funDefs argExprs ds))
+-- funAppHelper :: [FunDef] -> FunDef -> [Expr] -> DefSub -> ExprValue
+-- funAppHelper funDefs (Fundef funName args body) argExprs ds = 
+--     (interp body funDefs (defSubHelper args funDefs argExprs ds))
 
 
 checkNumber :: ExprValue -> Number
@@ -448,10 +471,10 @@ boolOp _ = error "bool operation applied to non bool"
 
 -- data FunDef = Fundef String [String] Expr deriving (Eq, Show)
 
-interp :: Expr -> [FunDef] -> DefSub -> ExprValue
+interp :: Expr -> [GlobalFunDef] -> DefSub -> ExprValue
 interp (Numb n) _ _ = NumV n
 interp (Boolean b) _ _ = BoolV (matchStrToBool b)
-interp (Sym s) _ ds = lookupDS (Symbol s) ds
+interp (Sym s) funDefs ds = lookupDS (Symbol s) funDefs ds
 interp (Add lhs rhs) funDefs ds = numOpAdd (interp lhs funDefs ds) (interp rhs funDefs ds)
 interp (Sub lhs rhs) funDefs ds = numOpSub (interp lhs funDefs ds) (interp rhs funDefs ds)
 interp (Mult lhs rhs) funDefs ds = numOpMult (interp lhs funDefs ds) (interp rhs funDefs ds)
@@ -467,7 +490,7 @@ interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
     if (evalTestBool (interp test funDefs ds))
         then (interp thn funDefs ds)
         else (interp els funDefs ds)
-interp (FunApp (Sym funName) args) funDefs ds = funAppHelper funDefs (lookupFundef funName funDefs) args ds -- expand interp to take fundefs
+-- interp (FunApp (Sym funName) args) funDefs ds = funAppHelper funDefs (lookupFundef funName funDefs) args ds -- expand interp to take fundefs
 interp (ListE vals) funDefs ds = (ListV (map (\x -> (interp x funDefs ds)) vals))
 -- interp (First lst) funDefs ds = (interp (head (listOp lst)) funDefs ds) -- need to split on the exprvalue cases for the result
 -- interp (Rest lst) funDefs ds = (interp (ListE (tail (listOp lst))) funDefs ds) -- same as first, do listOp function or something
@@ -511,7 +534,8 @@ interp (Or lhs rhs) funDefs ds =
         else if (interp rhs funDefs ds) == (BoolV True)
             then (BoolV True)
             else (BoolV False)
-interp _ _ _ = error "Interp - Not sure how we got here!"
+    
+-- interp _ _ _ = error "Interp - Not sure how we got here!"
 
 
 
@@ -519,10 +543,10 @@ interp _ _ _ = error "Interp - Not sure how we got here!"
 
 
 -- TODO pick up here
-interpWrap :: Expr -> [FunDef] -> ExprValue
+interpWrap :: Expr -> [GlobalFunDef] -> ExprValue
 interpWrap s funDefs = interp s funDefs (MtSub)
 
-multipleInterp :: [Expr] -> [FunDef] -> [ExprValue]
+multipleInterp :: [Expr] -> [GlobalFunDef] -> [ExprValue]
 multipleInterp s funDefs = (map (\x -> (interpWrap x funDefs)) s)
 
 interpVal :: ExprValue -> String
@@ -553,20 +577,10 @@ eval expr =
 -- main :: IO ()
 -- main = do
 
---     let expr = "(cond ((= 1 2) (things)) ((= 4 3) (lols)))"
+--     let expr = "(map (lambda (a) (+ 5 a)) (list 1 2 3 4))"
 
---     let expr2 = "(cond (= 1 2) (thing) (else))"
+--     print (parserWrapper (getAllExprs (lexer expr)))
 
---     print (getAllExprs (lexer expr))
---     print (getAllExprs (lexer expr2))
-
-    -- let expr = "(define (test) 10) (test)" -- case where the body is just a number or something
-
-    -- let expr = "(define test 10)"
-
-    -- let expr = "(define (cool a b) ((fun (x y) (+ y (+ b (+ a (+ x 10))))) 10 10)) (cool 1 2)"
-
-    -- let expr = "(define (cool a b) ((fun (x y) (+ y (+ b (+ a (+ x 10))))) 10 10)) (cool 1 2)"
 
 --     let expr = "(+ 1 2 3)"
 --     let expr2 = "(* 2 3 4)"

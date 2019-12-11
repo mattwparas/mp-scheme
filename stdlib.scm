@@ -46,35 +46,24 @@
       (cons init '())
       (cons init (unfold func (func init) pred))))
 
+(define (empty) (list))
 (define (fold f a l) (foldl f a l))
 (define (reduce f a l) (fold f a l))
-(define (max x  num-list) (fold (lambda (y z) (if (> y z) y z)) x (cons 0 num-list)))
-(define (min x  num-list) (fold (lambda (y z) (if (< y z) y z)) x (cons 536870911 num-list)))
-(define (length lst)        (fold (lambda (x y) (+ x 1)) 0 lst))
-(define (append lst  lsts)  (foldr (flip (curry foldr cons)) lst lsts))
-(define (reverse list) (cdr (foldl (flip cons) '() list)))
+(define (max x num-list) (fold (lambda (y z) (if (> y z) y z)) x (cons 0 num-list)))
+(define (min x num-list) (fold (lambda (y z) (if (< y z) y z)) x (cons 536870911 num-list)))
+(define (length lst) (fold (lambda (x y) (+ x 1)) 0 lst))
+(define (reverse lst) (cdr (foldl (flip cons) '() lst)))
 (define (mem-helper pred op) (lambda (acc next) (if (and (not acc) (pred (op next))) next acc)))
-(define (memq obj lst)       (fold (mem-helper (curry eq? obj) id) #f lst))
-(define (memv obj lst)       (fold (mem-helper (curry eqv? obj) id) #f lst))
-(define (member obj lst)     (fold (mem-helper (curry equal? obj) id) #f lst))
-(define (assq obj alist)     (fold (mem-helper (curry eq? obj) car) #f alist))
-(define (assv obj alist)     (fold (mem-helper (curry eqv? obj) car) #f alist))
-(define (assoc obj alist)    (fold (mem-helper (curry equal? obj) car) #f alist))
-(define (map func lst)      (foldr (lambda (x y) (cons (func x) y)) '() lst))
-(define (filter pred lst)   (foldr (lambda (x y) (if (pred x) (cons x y) y)) '() lst))
-(define (fact n) (if (== n 0) 1 (* n (fact (- n 1)))))
-(define (even x) (if (== x 0) #t (odd (- x 1))))
-(define (odd  x) (if (== x 0) #f (even (- x 1))))
-
-
-
-(define (test myfunc) (myfunc 5)) (test (lambda (a) (+ a 5)))
-
-
-((lambda (a b) (append a b)) (list 1 2 3 4) (list 5 6 7 8))
-
-(cons 1 (list 1 2 3 4))
-
-
+(define (memq obj lst) (fold (mem-helper (curry eq? obj) id) #f lst))
+(define (memv obj lst) (fold (mem-helper (curry eqv? obj) id) #f lst))
+(define (member obj lst) (fold (mem-helper (curry equal? obj) id) #f lst))
+(define (assq obj alist) (fold (mem-helper (curry eq? obj) car) #f alist))
+(define (assv obj alist) (fold (mem-helper (curry eqv? obj) car) #f alist))
+(define (assoc obj alist) (fold (mem-helper (curry equal? obj) car) #f alist))
+(define (map func lst) (foldr (lambda (x y) (cons (func x) y)) (empty) lst))
+(define (filter pred lst) (foldr (lambda (x y) (if (pred x) (cons x y) y)) (empty) lst))
+(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
+(define (even x) (if (= x 0) #t (odd (- x 1))))
+(define (odd x) (if (= x 0) #f (even (- x 1))))
 
 
