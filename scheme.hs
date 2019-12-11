@@ -6,11 +6,8 @@ import Data.Tree
 import Text.Parsec
 import Text.Parsec.String
 import Data.Either
--- import Data.HashMap.Lazy
 import Data.Map (Map)
 import qualified Data.Map as Map
-
-
 import qualified Data.Functor.Identity as F
 import qualified Text.Parsec.Prim as Prim
 import Text.Parsec
@@ -71,7 +68,6 @@ isNumeric s = isInteger s || isDouble s
 
 type Symbol = String
 type Number = Integer
-
 
 data WExpr =
     NumbW Integer
@@ -147,8 +143,6 @@ data Expr =
 data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
 
 -- Replace every instance of [FunDef] with HashMap
-data FunDef = Fundef String [String] Expr deriving (Eq, Show)
-
 data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
 data ExprValue =
@@ -157,7 +151,6 @@ data ExprValue =
     | ClosureV String Expr DefSub
     | ListV [ExprValue]
     deriving (Eq, Show)
-
 
 checkPieces :: [a] -> Int -> Bool
 checkPieces lst n = (length lst) == n
@@ -186,19 +179,6 @@ getAllExprs :: LispVal -> [LispVal]
 getAllExprs (List x) = (filter (\e -> (not (isFunDef e))) x)
 getAllExprs _ = error "idk"
 
-
--- parseFunDef :: LispVal -> FunDef
--- parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
---     (Fundef funName (map extractSymbol args) (compile (parser body)))
--- parseFunDef _ = error "parseFunDef - malformed function"
-
--- parseFunDefs :: [LispVal] -> [FunDef]
--- parseFunDefs x = (map parseFunDef x)
-
--- getFunDefs :: String -> [FunDef]
--- getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
-
-
 parseFunDef :: LispVal -> GlobalFunDef
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
     (FundefG funName (compile (FunW (map extractSymbol args) (parser body))))
@@ -209,19 +189,6 @@ parseFunDefs x = (map parseFunDef x)
 
 getFunDefs :: String -> [GlobalFunDef]
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
-
-
-{-
-
-(FundefG funName (compile (FunW (map extractSymbol args) (compile parser body))))
-
--}
-
-
--- TODO come back here pls
--- callGlobalFunc :: String -> [LispVal] -> WExpr
--- callGlobalFunc s lv = (FunAppW s (map parser lv))
-
 
 switchSymbol :: String -> [LispVal] -> WExpr
 switchSymbol "+" lv = (AddW (map parser lv)) -- TODO error checking
@@ -248,14 +215,8 @@ switchSymbol "cons" lv = (ConsW (parser (head lv)) (parser (lv !! 1))) -- expand
 switchSymbol "append" lv = (AppendW (parser (head lv)) (parser (lv !! 1))) -- expand to be any number
 switchSymbol "not" lv = (NotW (parser (head lv)))
 switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
--- switchSymbol "map" lv = (MapW (parser (head lv)) (parser (last lv)))
--- switchSymbol "filter" lv = (FilterW (parser (head lv)) (parser (last lv)))
--- switchSymbol "begin" lv = (BeginW (map parser lv))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
--- make fundefs follow the same patterns
 
--- switchSymbol _ lv = (AppW (parser (lv !! 0)) (map parser (tail lv)))
--- switchSymbol _ lv = appHelper lv
 
 appHelper :: [LispVal] -> WExpr
 appHelper lv = (AppW (parser (head lv)) (map parser (tail lv)))
@@ -271,7 +232,7 @@ parser (Symbol s) =
             then (BooleanW s)
             else (SymW s)
 parser (List []) = error "Empty expression"
-parser (List ((List x):xs)) = appHelper ((List x):xs) -- global function calls are going here, which they shouldnt be
+parser (List ((List x):xs)) = appHelper ((List x):xs)
 parser (List ((Symbol x):xs)) = switchSymbol x xs
 
 parserWrapper :: [LispVal] -> [WExpr]
@@ -320,10 +281,10 @@ compile (AndW conds) = boolFoldOptimization AndW And conds
 compile (OrW conds) = boolFoldOptimization OrW Or conds
 compile (NotW cond) = (Not (compile cond))
 compile (EqualW args) = compFoldOptimization EqualW Equal args
-compile (GtW args) = compFoldOptimization GtW Gt args -- (Gt (compile l) (compile r))
-compile (LtW args) = compFoldOptimization LtW Lt args -- (Lt (compile l) (compile r))
-compile (GtEW args) = compFoldOptimization GtEW GtE args -- (GtE (compile l) (compile r))
-compile (LtEW args) = compFoldOptimization LtEW LtE args -- (LtE (compile l) (compile r))
+compile (GtW args) = compFoldOptimization GtW Gt args
+compile (LtW args) = compFoldOptimization LtW Lt args
+compile (GtEW args) = compFoldOptimization GtEW GtE args
+compile (LtEW args) = compFoldOptimization LtEW LtE args
 compile (CondW tst thn els) = (Cond (compile tst) (compile thn) (compile els))
 compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile namedExpr))
 
@@ -343,14 +304,10 @@ compile (FunW paramNames body) =
 
 compile (FirstW lst) = (First (compile lst))
 compile (RestW lst) = (Rest (compile lst))
--- compile (FunAppW funName args) = (FunApp (Sym funName) (map compile args))
 compile (ListW vals) = (ListE (map compile vals))
 compile (ConsW l r) = (Cons (compile l) (compile r))
 compile (AppendW l r) = (Append (compile l) (compile r))
 compile (EmptyW lst) = (EmptyE (compile lst))
--- compile (MapW fun lst) = (MapE (compile fun) (compile lst))
--- compile (FilterW fun lst) = (FilterE (compile fun) (compile lst))
--- compile (BeginW lst) = leftFoldOptimization BeginW Begin lst
 
 
 compileMap :: [WExpr] -> [Expr]
@@ -364,7 +321,6 @@ lookupDS (Symbol s1) funDefs (ASub s2 val rest) =
         then val
         else (lookupDS (Symbol s1) funDefs rest)
 lookupDS _ _ _ = error "lookupDS malformed"
-
 
 lookupFundefs :: String -> [GlobalFunDef] -> Expr
 lookupFundefs s [] = error ("interp - free identifier" ++ s)
@@ -383,9 +339,9 @@ lookupFundef funName ((Fundef name args body):xs) =
 
 -- TODO abstract numOp to any operator, use generically in place of all of these
 -- TRY TO FIX THIS
-numOp :: ExprValue -> ExprValue -> (Integer -> Integer -> Integer) -> ExprValue
-numOP (NumV l) (NumV r) fn = (NumV ((fn) l r))
-numOp _ _ = (error "Wrong value given to numerical operator")
+-- numOp :: ExprValue -> ExprValue -> (Integer -> Integer -> Integer) -> ExprValue
+-- numOP (NumV l) (NumV r) fn = (NumV ((fn) l r))
+-- numOp _ _ _ = (error "Wrong value given to numerical operator")
 
 numOpAdd :: ExprValue -> ExprValue -> ExprValue
 numOpAdd (NumV l) (NumV r) = (NumV (l + r))
@@ -420,11 +376,13 @@ appEval _ _ _ = error "expected function"
 matchStrToBool :: String -> Bool
 matchStrToBool "#t" = True
 matchStrToBool "#f" = False
-matchStrTobool _ = error "Boolean malformed"
-
-
-
-
+matchStrToBool "#true" = True
+matchStrToBool "#false" = False
+matchStrToBool "#T" = True
+matchStrToBool "#F" = False
+matchStrToBool "#True" = True
+matchStrToBool "#False" = False
+matchStrToBool _ = error "Boolean malformed"
 
 defSubHelper :: [String] -> [GlobalFunDef] -> [Expr] -> DefSub -> DefSub
 defSubHelper [] funDefs [] ds = (MtSub)
@@ -432,25 +390,13 @@ defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs (b:bs) ds = (ASub x (interp b funDefs ds) (defSubHelper xs funDefs bs ds))
 
-
--- funAppHelper :: [FunDef] -> FunDef -> [Expr] -> DefSub -> ExprValue
--- funAppHelper funDefs (Fundef funName args body) argExprs ds = 
---     (interp body funDefs (defSubHelper args funDefs argExprs ds))
-
-
 checkNumber :: ExprValue -> Number
 checkNumber (NumV n) = n
-checkNumber _ = error "comparator not supported for non numbers"
-
-
-listOp :: Expr -> [Expr]
-listOp (ListE lst) = lst
-listOp s = error ("List operation applied to non list: " ++ (show s))
-
+checkNumber e = error ("comparator not supported for non numbers: " ++ (show e))
 
 listOpV :: ExprValue -> [ExprValue]
 listOpV (ListV lst) = lst
-
+listOpV e = error ("List operation applied to non list: " ++ (show e))
 
 boolToString :: Bool -> String
 boolToString True = "#t"
@@ -462,14 +408,9 @@ extractValue (NumV n) = (Numb n)
 extractValue (BoolV b) = (Boolean (boolToString b))
 extractValue (ClosureV paramName body ds) = (Fun paramName body)
 
-
 boolOp :: ExprValue -> Bool
 boolOp (BoolV b) = b
 boolOp _ = error "bool operation applied to non bool"
--- shortCircuit :: Expr -> Expr -> ExprValue
--- shortCircuit lhs rhs = _
-
--- data FunDef = Fundef String [String] Expr deriving (Eq, Show)
 
 interp :: Expr -> [GlobalFunDef] -> DefSub -> ExprValue
 interp (Numb n) _ _ = NumV n
@@ -490,38 +431,13 @@ interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
     if (evalTestBool (interp test funDefs ds))
         then (interp thn funDefs ds)
         else (interp els funDefs ds)
--- interp (FunApp (Sym funName) args) funDefs ds = funAppHelper funDefs (lookupFundef funName funDefs) args ds -- expand interp to take fundefs
 interp (ListE vals) funDefs ds = (ListV (map (\x -> (interp x funDefs ds)) vals))
--- interp (First lst) funDefs ds = (interp (head (listOp lst)) funDefs ds) -- need to split on the exprvalue cases for the result
--- interp (Rest lst) funDefs ds = (interp (ListE (tail (listOp lst))) funDefs ds) -- same as first, do listOp function or something
-
 interp (First lst) funDefs ds = (head (listOpV (interp lst funDefs ds)))-- need to split on the exprvalue cases for the result
 interp (Rest lst) funDefs ds = (ListV (tail (listOpV (interp lst funDefs ds))))
-
-
--- interp (Rest lst) funDefs ds = (ListV ())
--- interp (Cons l r) funDefs ds = (interp (ListE (l : (listOp r))) funDefs ds) -- TODO expand to any number of arguments
 interp (Cons l r) funDefs ds = (ListV ((interp l funDefs ds) : (listOpV (interp r funDefs ds)))) -- TODO expand to any number of arguments
--- interp (Append l r) funDefs ds = (interp (ListE ((listOp l) ++ (listOp r))) funDefs ds) -- TODO expand to any number of arguments
 interp (Append l r) funDefs ds = (ListV ((listOpV (interp l funDefs ds)) ++ (listOpV (interp r funDefs ds)))) 
 interp (Not cond) funDefs ds = (BoolV (not (boolOp (interp cond funDefs ds))))
 interp (EmptyE lst) funDefs ds = (BoolV (length (listOpV (interp lst funDefs ds)) == 0))
--- interp (MapE fn lst) funDefs ds = (ListV (map (\x -> (interp (App fn x) funDefs ds)) (listOp lst)))
--- interp (FilterE fn lst) funDefs ds = 
-    -- (ListV (map (\x -> (interp x funDefs ds)) (filter (\x -> (interp (App fn x) funDefs ds) == (BoolV True)) (listOp lst))))
-    
-
-    -- (ListV (filter (\x -> ((interp (App fn x) funDefs ds) == (BoolV True))) (listOp (interp lst funDefs ds))))
-    -- (ListV (filter (\x -> ((interp (App fn x) funDefs ds) == (BoolV True))) (listOp lst))) 
-
--- interp (And conds) funDefs ds = 
---     if (interp (head conds) funDefs ds) == (BoolV False)
---         then (BoolV False)
---         else if (interp (And (tail conds)) funDefs ds) == (BoolV True)
---             then (BoolV True)
---             else (BoolV False)
-
-
 interp (And lhs rhs) funDefs ds =  -- TODO check if this is actually a necessary optimization?
     if (interp lhs funDefs ds) == (BoolV False)
         then (BoolV False)
@@ -534,13 +450,6 @@ interp (Or lhs rhs) funDefs ds =
         else if (interp rhs funDefs ds) == (BoolV True)
             then (BoolV True)
             else (BoolV False)
-    
--- interp _ _ _ = error "Interp - Not sure how we got here!"
-
-
-
--- interp (With ) -- TODO figure out this with thing
-
 
 -- TODO pick up here
 interpWrap :: Expr -> [GlobalFunDef] -> ExprValue
@@ -558,14 +467,7 @@ interpVal (ClosureV _ _ _) = "internal function"
 multipleInterpVal :: [ExprValue] -> [String]
 multipleInterpVal evs = (map interpVal evs)
 
-{-
-TODO
 
-add parens
-split up functions and exprs
-then interp
-
--}
 eval :: String -> [String]
 eval expr = 
     (multipleInterpVal 
@@ -577,137 +479,18 @@ eval expr =
 -- main :: IO ()
 -- main = do
 
---     let expr = "(map (lambda (a) (+ 5 a)) (list 1 2 3 4))"
+--     let expr = "[1 2 3 4 5]"
 
 --     print (parserWrapper (getAllExprs (lexer expr)))
 
 
---     let expr = "(+ 1 2 3)"
---     let expr2 = "(* 2 3 4)"
---     let expr3 = "(/ 100 10 5)"
---     let expr4 = "(- 100 90 5)"
-
---     let expr5 = "(and #t #t)"
---     let expr6 = "(and #t #t #t #t #t #f)"
---     let expr7 = "(and #f #t #t)"
---     let expr8 = ""
-
---     -- be able to bind variables for the course of a file and substitute them in
---     -- let expr8 = "(define app (lambda (arg1 arg2) (string-append arg1 arg2)))"
---     -- print (eval expr8)
-
-
---     print (eval expr5)
---     print (eval expr6)
---     print (eval expr7)
-
---     -- print (100 `div` 10 `div` 5)
-
---     -- print (compileMap (parserWrapper (getAllExprs (lexer expr4))))
-
---     -- print (lexer expr)
-
---     -- let expr = "(* 3 5)"
---     -- let expr2 = "(/ 3 5)"
-
-
-
---     print (eval expr)
---     print (eval expr2)
---     print (eval expr3)
---     print (eval expr4)
---     -- print (eval expr2)
-
-
-
-
-
---     (define (fib n)
---   (if (= n 1)
---       0
---       (if (= n 2)
---           1
---           (+ (fib (- n 1)) (fib (- n 2))))))
-
-
-
-    -- print (eval expr6)
-
-
-    -- print (lexer expr)
-    -- print (getAllExprs (lexer expr))
-    -- print (parserWrapper (getAllExprs (lexer expr)))
-    -- print (compileMap (parserWrapper (getAllExprs (lexer expr))))
-    -- print (eval expr)
-
-    -- print (eval expr)
-
-    -- print (getFunDefs expr)
-
-    -- print (interpWrap (compile (parser (lexer expr))) [])
-
-
-
-    -- let testExpr = "(define (my-func arg1 arg2) (+ arg1 arg2))"
-
-    -- print (parser (lexer testExpr))
-
-
-    -- let testExpr2 = "(my-func 25 35)"
-
-    -- print (parser (lexer testExpr2))
-
-    -- let testExpr3 = "(+ 5 5)"
-
-    -- print (parser (lexer testExpr3))
-
-    -- print (lexer testExpr2)
-    -- print (lexer testExpr3)
-
-    -- let testExpr3 = "(begin (+ 5 5) (+ 5 5))"
-
-    -- let testExpr4 = "(define (func1 x y) (+ x y)) (define (func2 x y) (+ x y)) (+ 5 5)"
-
-    -- let test = List [List [Symbol "define",List [Symbol "my-func",Symbol "arg1",Symbol "arg2"],List [Symbol "+",Symbol "arg1",Symbol "arg2"]],List [Symbol "define",List [Symbol "my-func2",Symbol "arg1",Symbol "arg2"],List [Symbol "+",Symbol "arg1",Symbol "arg2"]]]
-
-    -- print (getAllFunDefs testExpr4)
-
-    -- print (parseFunDefs (getAllFunDefs (lexer testExpr4)))
-
-    -- print (getAllExprs (lexer testExpr4))
-
-    -- print (lexer "(+ 10 (-5 6))")
-    -- print (lexer testExpr4)
-
-    -- List [Symbol "define",List [Symbol "func1",Symbol "x",Symbol "y"],List [Symbol "+",Symbol "x",Symbol "y"]]
-
-    -- print (lexer testExpr)
-    -- print (lexer testExpr2)
-    -- print (lexer testExpr3)
-
-    -- let test = AppW (FunW ["x"] (AddW (SymW "x") (NumbW 10))) [NumbW 10]
-
-    -- print (length [NumbW 10])
-
-    -- print (compile test)
-
-    -- print (parser (lexer expr4))
-
-    -- AppW (FunW ["x"] (AddW (SymW "x") (NumbW 10))) [NumbW 10]
-
 {-
-
-
 NOTES:
-
 (define (my-func arg1 arg2)
     (+ arg1 arg2))
 
 (my-func arg1 arg2) -> application w/ arg1 arg2
 (begin - number of statements)
-
-
-
 
 => (with my-func (fun (arg1 arg2) (+ arg1 arg2)))
 
@@ -721,5 +504,4 @@ support recursion!
 support for loops and while loops (via the compiler?)
 support lambda for fun!
 support string
-
 -}

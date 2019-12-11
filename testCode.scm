@@ -8,7 +8,6 @@
 (fib 6)
 (fib 5)
 (fib 15)
-; (fib 100)
 
 
 (define (factorial n)

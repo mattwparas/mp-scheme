@@ -43,7 +43,7 @@
 
 (define (unfold func init pred)
   (if (pred init)
-      (cons init '())
+      (cons init (empty))
       (cons init (unfold func (func init) pred))))
 
 (define (empty) (list))
@@ -52,7 +52,7 @@
 (define (max x num-list) (fold (lambda (y z) (if (> y z) y z)) x (cons 0 num-list)))
 (define (min x num-list) (fold (lambda (y z) (if (< y z) y z)) x (cons 536870911 num-list)))
 (define (length lst) (fold (lambda (x y) (+ x 1)) 0 lst))
-(define (reverse lst) (cdr (foldl (flip cons) '() lst)))
+(define (reverse lst) (cdr (foldl (flip cons) (empty) lst)))
 (define (mem-helper pred op) (lambda (acc next) (if (and (not acc) (pred (op next))) next acc)))
 (define (memq obj lst) (fold (mem-helper (curry eq? obj) id) #f lst))
 (define (memv obj lst) (fold (mem-helper (curry eqv? obj) id) #f lst))
