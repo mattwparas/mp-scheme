@@ -290,7 +290,7 @@ compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile na
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
-        then error "Compile - Nullary Application"
+        then error ("Compile - Nullary Application: " ++ (show funExpr))
         else if (length argExprs == 1)
             then (App (compile funExpr) (compile (head argExprs)))
             else (App (compile (AppW funExpr (getAllButLast argExprs))) (compile (last argExprs)))
@@ -329,12 +329,12 @@ lookupFundefs s ((FundefG funName closure):xs) =
         then closure
         else (lookupFundefs s xs)
 
-lookupFundef :: String -> [FunDef] -> FunDef
-lookupFundef funName [] = error ("interp: undefined function: " ++ funName)
-lookupFundef funName ((Fundef name args body):xs) = 
-    if funName == name
-        then (Fundef name args body)
-        else (lookupFundef funName xs)
+-- lookupFundef :: String -> [FunDef] -> FunDef
+-- lookupFundef funName [] = error ("interp: undefined function: " ++ funName)
+-- lookupFundef funName ((Fundef name args body):xs) = 
+--     if funName == name
+--         then (Fundef name args body)
+--         else (lookupFundef funName xs)
 
 
 -- TODO abstract numOp to any operator, use generically in place of all of these
@@ -476,12 +476,23 @@ eval expr =
     (getFunDefs expr)))
 
 
+evalWithStdLib :: String -> String -> [String]
+evalWithStdLib expr file =
+    (multipleInterpVal
+    (multipleInterp
+    (compileMap (parserWrapper (getAllExprs (lexer expr))))
+    ((getFunDefs file) ++ (getFunDefs expr))))
+
+
+
 -- main :: IO ()
 -- main = do
 
---     let expr = "[1 2 3 4 5]"
+--     let expr = "([1 2 3 4 5])"
 
---     print (parserWrapper (getAllExprs (lexer expr)))
+--     print (lexer expr)
+
+    -- print (parserWrapper (getAllExprs (lexer expr)))
 
 
 {-

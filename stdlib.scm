@@ -43,7 +43,7 @@
 
 (define (unfold func init pred)
   (if (pred init)
-      (cons init (empty))
+      (cons init (list))
       (cons init (unfold func (func init) pred))))
 
 (define (empty) (list))
@@ -52,7 +52,7 @@
 (define (max x num-list) (fold (lambda (y z) (if (> y z) y z)) x (cons 0 num-list)))
 (define (min x num-list) (fold (lambda (y z) (if (< y z) y z)) x (cons 536870911 num-list)))
 (define (length lst) (fold (lambda (x y) (+ x 1)) 0 lst))
-(define (reverse lst) (cdr (foldl (flip cons) (empty) lst)))
+(define (reverse lst) (cdr (foldl (flip cons) (list) lst)))
 (define (mem-helper pred op) (lambda (acc next) (if (and (not acc) (pred (op next))) next acc)))
 (define (memq obj lst) (fold (mem-helper (curry eq? obj) id) #f lst))
 (define (memv obj lst) (fold (mem-helper (curry eqv? obj) id) #f lst))
@@ -60,10 +60,11 @@
 (define (assq obj alist) (fold (mem-helper (curry eq? obj) car) #f alist))
 (define (assv obj alist) (fold (mem-helper (curry eqv? obj) car) #f alist))
 (define (assoc obj alist) (fold (mem-helper (curry equal? obj) car) #f alist))
-(define (map func lst) (foldr (lambda (x y) (cons (func x) y)) (empty) lst))
-(define (filter pred lst) (foldr (lambda (x y) (if (pred x) (cons x y) y)) (empty) lst))
+(define (map func lst) (foldr (lambda (x y) (cons (func x) y)) (list) lst))
+(define (filter pred lst) (foldr (lambda (x y) (if (pred x) (cons x y) y)) (list) lst))
 (define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
 (define (even x) (if (= x 0) #t (odd (- x 1))))
 (define (odd x) (if (= x 0) #f (even (- x 1))))
 
+(map (lambda (a) (+ a 5)) (list 1 2 3 4))
 
