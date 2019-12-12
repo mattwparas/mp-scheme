@@ -66,5 +66,3 @@
 (define (even x) (if (= x 0) #t (odd (- x 1))))
 (define (odd x) (if (= x 0) #f (even (- x 1))))
 
-(map (lambda (a) (+ a 5)) (list 1 2 3 4))
-

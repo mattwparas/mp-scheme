@@ -31,12 +31,6 @@ tProg = tExpr <?> "program"
     tExpr = between ws ws (tList <|> tAtom) <?> "expression"
     ws = whiteSpace haskell
     tAtom =
-        -- (try (Float <$> float haskell) <?> "floating point number") <|>
-        -- (try (Int <$> integer haskell) <?> "integer") <|>
-        -- (String <$> stringLiteral haskell <?> "string") <|>
-        -- (Symbol <$> many1 (noneOf "()\"\t\n\r ") <?> "symbol") <?>
-        -- (String <$> stringLiteral haskell <?> "string") <|>
-        -- (try (Int <$> integer haskell) <?> "integer") <|>
         (Symbol <$> many1 (noneOf "()\"\t\n\r ") <?> "symbol") <?>
         "atomic expression"
     tList = List <$> between (char '(') (char ')') (many tExpr) <?> "list"
@@ -86,7 +80,6 @@ data WExpr =
     | FunW [String] WExpr
     | AppW WExpr [WExpr]
     | WithW String WExpr WExpr
-    -- | FunAppW String [WExpr]
     | ListW [WExpr]
     | AndW [WExpr]
     | OrW [WExpr]
@@ -96,10 +89,6 @@ data WExpr =
     | AppendW WExpr WExpr
     | NotW WExpr
     | EmptyW WExpr
-    -- | MapW WExpr WExpr
-    -- | FilterW WExpr WExpr
-    -- | BeginW [WExpr]
-    -- | Cond [(Expr, Expr)] Expr
     deriving (Eq, Show)
 
 data Expr = 
@@ -118,7 +107,6 @@ data Expr =
     | Cond Expr Expr Expr
     | Fun String Expr
     | App Expr Expr
-    -- | FunApp Expr [Expr]
     | ListE [Expr]
     | And Expr Expr
     | Or Expr Expr
@@ -128,16 +116,7 @@ data Expr =
     | Append Expr Expr
     | Not Expr
     | EmptyE Expr
-    -- | MapE Expr Expr
-    -- | FilterE Expr Expr
-    -- | Begin Expr Expr
-    -- | With String Expr Expr
-    -- | Cond [(Expr, Expr)] Expr
     deriving (Eq, Show)
-
-{-
-(cond ((expression) (then)) (else))
--}
 
 -- Replace this with a HashMap
 data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
@@ -157,7 +136,7 @@ checkPieces lst n = (length lst) == n
 
 extractSymbol :: LispVal -> String
 extractSymbol (Symbol s) = s
-extractSymbol _ = error "extract Symbol used incorrectly"
+extractSymbol e = error ("extract Symbol used incorrectly on: " ++ (show e))
 
 withHelper :: [LispVal] -> WExpr
 withHelper ((List ((Symbol s):body:[])):xs:[]) = (WithW s (parser body) (parser xs))
@@ -290,7 +269,7 @@ compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile na
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
-        then error ("Compile - Nullary Application: " ++ (show funExpr))
+        then error ("Compile - Nullary Application: " ++ (show funExpr)) -- TODO make it so you can use no arguments
         else if (length argExprs == 1)
             then (App (compile funExpr) (compile (head argExprs)))
             else (App (compile (AppW funExpr (getAllButLast argExprs))) (compile (last argExprs)))
@@ -328,14 +307,6 @@ lookupFundefs s ((FundefG funName closure):xs) =
     if funName == s
         then closure
         else (lookupFundefs s xs)
-
--- lookupFundef :: String -> [FunDef] -> FunDef
--- lookupFundef funName [] = error ("interp: undefined function: " ++ funName)
--- lookupFundef funName ((Fundef name args body):xs) = 
---     if funName == name
---         then (Fundef name args body)
---         else (lookupFundef funName xs)
-
 
 -- TODO abstract numOp to any operator, use generically in place of all of these
 -- TRY TO FIX THIS
