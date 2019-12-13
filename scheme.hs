@@ -22,6 +22,7 @@ import Text.Parsec.Language (haskell)
 
 data LispVal
   = Symbol String
+    | StringVal String
     | List [LispVal]
     | ListVal [LispVal] -- direct translation to lists
     deriving (Eq, Show)
@@ -32,6 +33,7 @@ tProg = tExpr <?> "program"
     tExpr = between ws ws (tListVal <|> tListTick <|> tList <|> tAtom) <?> "expression"
     ws = whiteSpace haskell
     tAtom =
+        (StringVal <$> stringLiteral haskell <?> "string") <|>
         (Symbol <$> many1 (noneOf "'()[]\"\t\n\r ") <?> "symbol") <?>
         "atomic expression"
     tList = List <$> between (char '(') (char ')') (many tExpr) <?> "list"
@@ -69,6 +71,7 @@ type Number = Integer
 data WExpr =
     NumbW Integer
     | BooleanW String
+    | StringW String
     | SymW [Char]
     | AddW [WExpr]
     | SubW [WExpr]
@@ -97,6 +100,7 @@ data WExpr =
 
 data Expr = 
     Numb Integer
+    | StringE String
     | Boolean String
     | Sym [Char]
     | Add Expr Expr
@@ -134,6 +138,7 @@ data ExprValue =
     | BoolV Bool
     | ClosureV String Expr DefSub
     | ListV [ExprValue]
+    | StringV String
     deriving (Eq, Show)
 
 checkPieces :: [a] -> Int -> Bool
@@ -174,26 +179,11 @@ parseFunDefs x = (map parseFunDef x)
 getFunDefs :: String -> [GlobalFunDef]
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
-
-
--- List 
--- [List 
--- [Symbol "cond",
--- ListVal [List [Symbol "=",Symbol "1",Symbol "2"],
---         List [Symbol "list",Symbol "1",Symbol "2",Symbol "3"]],
--- ListVal [List [Symbol "=",Symbol "3",Symbol "4"],
---         List [Symbol "list",Symbol "4",Symbol "5",Symbol "6"]],
--- ListVal [Symbol "else",List [Symbol "list",Symbol "7",Symbol "8",Symbol "9"]]]]
-
-
 condHelper :: [LispVal] -> WExpr
 condHelper lst =
     (CondWT 
     (map (\x -> ((parser (head (unWrapBracket x))), (parser (last (unWrapBracket x))))) (getAllButLast lst)) 
     (parser (last (unWrapBracket (last lst)))))
-
-    -- getAllButLast :: [a] -> [a]
-    -- getAllButLast lst = reverse (tail (reverse lst))
 
 switchSymbol :: String -> [LispVal] -> WExpr
 switchSymbol "+" lv = (AddW (map parser lv)) -- TODO error checking
@@ -243,6 +233,7 @@ parser (Symbol s) =
         else if (isBoolean s)
             then (BooleanW s)
             else (SymW s)
+parser (StringVal s) = (StringW s)
 parser (List []) = error "Empty expression"
 parser (List ((List x):xs)) = appHelper ((List x):xs)
 parser (List ((ListVal x):xs)) = (ListW (map parser x)) -- this could be my cond case!
@@ -287,6 +278,7 @@ compile :: WExpr -> Expr
 compile (NumbW n) = Numb n
 compile (BooleanW b) = Boolean b
 compile (SymW s) = Sym s
+compile (StringW s) = StringE s
 compile (AddW args) = leftFoldOptimization AddW Add args
 compile (SubW args) = leftFoldOptimization SubW Sub args
 compile (MultW args) = leftFoldOptimization MultW Mult args
@@ -424,6 +416,7 @@ interp :: Expr -> [GlobalFunDef] -> DefSub -> ExprValue
 interp (Numb n) _ _ = NumV n
 interp (Boolean b) _ _ = BoolV (matchStrToBool b)
 interp (Sym s) funDefs ds = lookupDS (Symbol s) funDefs ds
+interp (StringE s) _ _ = StringV s
 interp (Add lhs rhs) funDefs ds = numOpAdd (interp lhs funDefs ds) (interp rhs funDefs ds)
 interp (Sub lhs rhs) funDefs ds = numOpSub (interp lhs funDefs ds) (interp rhs funDefs ds)
 interp (Mult lhs rhs) funDefs ds = numOpMult (interp lhs funDefs ds) (interp rhs funDefs ds)
@@ -479,11 +472,11 @@ interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
 interpVal (BoolV b) = show b
 interpVal (ListV vals) = show (map interpVal vals)
+interpVal (StringV s) = s
 interpVal (ClosureV _ _ _) = "internal function"
 
 multipleInterpVal :: [ExprValue] -> [String]
 multipleInterpVal evs = (map interpVal evs)
-
 
 eval :: String -> [String]
 eval expr = 
@@ -505,17 +498,24 @@ evalWithStdLib expr file =
 -- main :: IO ()
 -- main = do
 
---     let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
+--     -- let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
 
---     print (eval expr)
+--     -- let expr = "(#import stdlib.scm) (#import helpers.scm)"
 
+--     -- let expr = "\"hello\""
 
+--     expr <- (readFile "fac.scm")
+
+--     print expr
+
+    -- print (lexer expr)
+
+    -- print (eval expr)
 
     -- let expr3 = "1 2 3 4"
 
     -- print (parserWrapper (getAllExprs (lexer expr)))
 
-    -- print (parserWrapper (getAllExprs (lexer expr)))
 
 
 {-
