@@ -23,7 +23,7 @@ import Text.Parsec.Language (haskell)
 data LispVal
   = Symbol String
     | List [LispVal]
-    | ListVal [LispVal]
+    | ListVal [LispVal] -- direct translation to lists
     deriving (Eq, Show)
 
 tProg :: Prim.ParsecT String a F.Identity LispVal
@@ -92,6 +92,7 @@ data WExpr =
     | AppendW WExpr WExpr
     | NotW WExpr
     | EmptyW WExpr
+    | CondWT [(WExpr, WExpr)] WExpr
     deriving (Eq, Show)
 
 data Expr = 
@@ -119,6 +120,7 @@ data Expr =
     | Append Expr Expr
     | Not Expr
     | EmptyE Expr
+    | CondT [(Expr, Expr)] Expr
     deriving (Eq, Show)
 
 -- Replace this with a HashMap
@@ -172,6 +174,27 @@ parseFunDefs x = (map parseFunDef x)
 getFunDefs :: String -> [GlobalFunDef]
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
+
+
+-- List 
+-- [List 
+-- [Symbol "cond",
+-- ListVal [List [Symbol "=",Symbol "1",Symbol "2"],
+--         List [Symbol "list",Symbol "1",Symbol "2",Symbol "3"]],
+-- ListVal [List [Symbol "=",Symbol "3",Symbol "4"],
+--         List [Symbol "list",Symbol "4",Symbol "5",Symbol "6"]],
+-- ListVal [Symbol "else",List [Symbol "list",Symbol "7",Symbol "8",Symbol "9"]]]]
+
+
+condHelper :: [LispVal] -> WExpr
+condHelper lst =
+    (CondWT 
+    (map (\x -> ((parser (head (unWrapBracket x))), (parser (last (unWrapBracket x))))) (getAllButLast lst)) 
+    (parser (last (unWrapBracket (last lst)))))
+
+    -- getAllButLast :: [a] -> [a]
+    -- getAllButLast lst = reverse (tail (reverse lst))
+
 switchSymbol :: String -> [LispVal] -> WExpr
 switchSymbol "+" lv = (AddW (map parser lv)) -- TODO error checking
 switchSymbol "-" lv = (SubW (map parser lv))
@@ -184,7 +207,10 @@ switchSymbol "<=" lv = (LtEW (map parser lv))
 switchSymbol ">=" lv = (GtEW (map parser lv))
 switchSymbol "and" lv = (AndW (map parser lv))
 switchSymbol "or" lv = (OrW (map parser lv))
-switchSymbol "cond" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
+-- switchSymbol "cond" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
+
+switchSymbol "cond" lv = condHelper lv
+
 switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
 switchSymbol "lambda" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv))) -- change to accept multiple arguments
 switchSymbol "with" lv = withHelper lv
@@ -205,6 +231,10 @@ appHelper lv = (AppW (parser (head lv)) (map parser (tail lv)))
 
 isBoolean :: String -> Bool
 isBoolean s = (s == "#t") || (s == "#f")
+
+unWrapBracket :: LispVal -> [LispVal]
+unWrapBracket (ListVal l) = l
+unWrapBracket e = error ("unwrapping a bracketed value threw an error: " ++ (show e))
 
 parser :: LispVal -> WExpr
 parser (Symbol s) = 
@@ -292,6 +322,8 @@ compile (ListW vals) = (ListE (map compile vals))
 compile (ConsW l r) = (Cons (compile l) (compile r))
 compile (AppendW l r) = (Append (compile l) (compile r))
 compile (EmptyW lst) = (EmptyE (compile lst))
+compile (CondWT tests els) =
+    (CondT (map (\x -> ((compile (fst x)), (compile (snd x)))) tests) (compile els))
 
 
 compileMap :: [WExpr] -> [Expr]
@@ -407,6 +439,15 @@ interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
     if (evalTestBool (interp test funDefs ds))
         then (interp thn funDefs ds)
         else (interp els funDefs ds)
+
+interp (CondT tests els) funDefs ds =
+    if tests == []
+        then (interp els funDefs ds)
+        else if (evalTestBool (interp (fst (head tests)) funDefs ds))
+            then (interp (snd (head tests)) funDefs ds)
+            else (interp (CondT (tail tests) els) funDefs ds)
+
+
 interp (ListE vals) funDefs ds = (ListV (map (\x -> (interp x funDefs ds)) vals))
 interp (First lst) funDefs ds = (head (listOpV (interp lst funDefs ds)))-- need to split on the exprvalue cases for the result
 interp (Rest lst) funDefs ds = (ListV (tail (listOpV (interp lst funDefs ds))))
@@ -464,9 +505,15 @@ evalWithStdLib expr file =
 -- main :: IO ()
 -- main = do
 
---     let expr = "'()"
+--     let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
 
---     print (lexer expr)
+--     print (eval expr)
+
+
+
+    -- let expr3 = "1 2 3 4"
+
+    -- print (parserWrapper (getAllExprs (lexer expr)))
 
     -- print (parserWrapper (getAllExprs (lexer expr)))
 
