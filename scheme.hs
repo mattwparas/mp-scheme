@@ -23,17 +23,20 @@ import Text.Parsec.Language (haskell)
 data LispVal
   = Symbol String
     | List [LispVal]
+    | ListVal [LispVal]
     deriving (Eq, Show)
 
 tProg :: Prim.ParsecT String a F.Identity LispVal
 tProg = tExpr <?> "program"
   where
-    tExpr = between ws ws (tList <|> tAtom) <?> "expression"
+    tExpr = between ws ws (tListVal <|> tListTick <|> tList <|> tAtom) <?> "expression"
     ws = whiteSpace haskell
     tAtom =
-        (Symbol <$> many1 (noneOf "()\"\t\n\r ") <?> "symbol") <?>
+        (Symbol <$> many1 (noneOf "'()[]\"\t\n\r ") <?> "symbol") <?>
         "atomic expression"
     tList = List <$> between (char '(') (char ')') (many tExpr) <?> "list"
+    tListVal = ListVal <$> between (char '[') (char ']') (many tExpr) <?> "list"
+    tListTick = ListVal <$> between (string "'(") (char ')') (many tExpr) <?> "list"
 
 
 unWrap :: LispVal -> [LispVal]
@@ -212,7 +215,9 @@ parser (Symbol s) =
             else (SymW s)
 parser (List []) = error "Empty expression"
 parser (List ((List x):xs)) = appHelper ((List x):xs)
+parser (List ((ListVal x):xs)) = (ListW (map parser x)) -- this could be my cond case!
 parser (List ((Symbol x):xs)) = switchSymbol x xs
+parser (ListVal x) = (ListW (map parser x))
 
 parserWrapper :: [LispVal] -> [WExpr]
 parserWrapper lv = (map parser lv)
@@ -459,7 +464,7 @@ evalWithStdLib expr file =
 -- main :: IO ()
 -- main = do
 
---     let expr = "([1 2 3 4 5])"
+--     let expr = "'()"
 
 --     print (lexer expr)
 
