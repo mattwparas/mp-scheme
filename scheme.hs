@@ -39,6 +39,10 @@ tProg = tExpr <?> "program"
     tList = List <$> between (char '(') (char ')') (many tExpr) <?> "list"
     tListVal = ListVal <$> between (char '[') (char ']') (many tExpr) <?> "list"
     tListTick = ListVal <$> between (string "'(") (char ')') (many tExpr) <?> "list"
+    multiLineCom = ListVal <$> between (string "{-") (string "-}") (many tExpr) <?> "multi-line-comment"
+    -- singleLineCom = ListVal <$> between (string "--") (char '\n') (many tExpr) <?> "comment"
+    -- singleLineCom2 = ListVal <$> between (char ';') (oneOf "\n\r") (many tExpr) <?> "comment"
+    -- endOfFileLine2 = ListVal <$> between (char ';') (eof) (many tExpr) <?> "comment"
 
 
 unWrap :: LispVal -> [LispVal]
@@ -96,6 +100,7 @@ data WExpr =
     | NotW WExpr
     | EmptyW WExpr
     | CondWT [(WExpr, WExpr)] WExpr
+    | CaseW WExpr [(WExpr, WExpr)] WExpr
     deriving (Eq, Show)
 
 data Expr = 
@@ -125,6 +130,7 @@ data Expr =
     | Not Expr
     | EmptyE Expr
     | CondT [(Expr, Expr)] Expr
+    | Case Expr [(Expr, Expr)] Expr
     deriving (Eq, Show)
 
 -- Replace this with a HashMap
@@ -179,6 +185,14 @@ parseFunDefs x = (map parseFunDef x)
 getFunDefs :: String -> [GlobalFunDef]
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
+
+caseHelper :: [LispVal] -> WExpr
+caseHelper lst =
+    (CaseW
+    (parser (head lst))
+    (map (\x -> ((parser (head (unWrapBracket x))), (parser (last (unWrapBracket x))))) (getAllButLast (tail lst)))
+    (parser (last (unWrapBracket (last lst)))))
+
 condHelper :: [LispVal] -> WExpr
 condHelper lst =
     (CondWT 
@@ -200,6 +214,7 @@ switchSymbol "or" lv = (OrW (map parser lv))
 -- switchSymbol "cond" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
 
 switchSymbol "cond" lv = condHelper lv
+switchSymbol "case-split" lv = caseHelper lv
 
 switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
 switchSymbol "lambda" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv))) -- change to accept multiple arguments
@@ -316,7 +331,8 @@ compile (AppendW l r) = (Append (compile l) (compile r))
 compile (EmptyW lst) = (EmptyE (compile lst))
 compile (CondWT tests els) =
     (CondT (map (\x -> ((compile (fst x)), (compile (snd x)))) tests) (compile els))
-
+compile (CaseW exp cases els) =
+    (Case (compile exp) (map (\x -> ((compile (fst x)), (compile (snd x)))) cases) (compile els))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)
@@ -412,6 +428,7 @@ boolOp :: ExprValue -> Bool
 boolOp (BoolV b) = b
 boolOp _ = error "bool operation applied to non bool"
 
+
 interp :: Expr -> [GlobalFunDef] -> DefSub -> ExprValue
 interp (Numb n) _ _ = NumV n
 interp (Boolean b) _ _ = BoolV (matchStrToBool b)
@@ -439,6 +456,13 @@ interp (CondT tests els) funDefs ds =
         else if (evalTestBool (interp (fst (head tests)) funDefs ds))
             then (interp (snd (head tests)) funDefs ds)
             else (interp (CondT (tail tests) els) funDefs ds)
+
+interp (Case expr conds els) funDefs ds = -- TODO optimize this if possible
+    if conds == []
+        then (interp els funDefs ds)
+        else if (interp (fst (head conds)) funDefs ds) == (interp expr funDefs ds)
+            then (interp (snd (head conds)) funDefs ds)
+            else (interp (Case expr (tail conds) els) funDefs ds)
 
 
 interp (ListE vals) funDefs ds = (ListV (map (\x -> (interp x funDefs ds)) vals))
@@ -504,15 +528,22 @@ evalWithStdLib expr file =
 
 --     -- let expr = "\"hello\""
 
---     expr <- (readFile "fac.scm")
+--     -- expr <- (readFile "fac.scm")
 
---     print expr
+-- --     print expr
 
-    -- print (lexer expr)
+--     -- print (lexer expr)
+
+--     -- print (eval expr)
+
+--     -- let expr = "(case-split #t [#f (list 1 2 3)] [#f (list 4 5 6)] [else (list 9)])"
+--     let expr = "(list 1 2 3) -- this should get ignored"
+
+--     print (lexer expr)
+
+    -- let expr = "(+ 5 5)"
 
     -- print (eval expr)
-
-    -- let expr3 = "1 2 3 4"
 
     -- print (parserWrapper (getAllExprs (lexer expr)))
 
