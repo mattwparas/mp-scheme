@@ -25,6 +25,7 @@ data LispVal
     | StringVal String
     | List [LispVal]
     | ListVal [LispVal] -- direct translation to lists
+    | VectorVal [LispVal]
     deriving (Eq, Show)
 
 tProg :: Prim.ParsecT String a F.Identity LispVal
@@ -38,8 +39,10 @@ tProg = tExpr <?> "program"
         "atomic expression"
     tList = List <$> between (char '(') (char ')') (many tExpr) <?> "list"
     tListVal = ListVal <$> between (char '[') (char ']') (many tExpr) <?> "list"
+    -- tVectorVal = VectorVal <$> between (string "<[") (string "]>") (many tExpr) <?> "vector"
     tListTick = ListVal <$> between (string "'(") (char ')') (many tExpr) <?> "list"
     multiLineCom = ListVal <$> between (string "{-") (string "-}") (many tExpr) <?> "multi-line-comment"
+
     -- singleLineCom = ListVal <$> between (string "--") (char '\n') (many tExpr) <?> "comment"
     -- singleLineCom2 = ListVal <$> between (char ';') (oneOf "\n\r") (many tExpr) <?> "comment"
     -- endOfFileLine2 = ListVal <$> between (char ';') (eof) (many tExpr) <?> "comment"
@@ -172,7 +175,7 @@ getAllFunDefs _ = error "getAllFunDefs used incorrectly"
 
 getAllExprs :: LispVal -> [LispVal]
 getAllExprs (List x) = (filter (\e -> (not (isFunDef e))) x)
-getAllExprs _ = error "idk"
+getAllExprs e = error ("error in getAllExprs" ++ (show e))
 
 parseFunDef :: LispVal -> GlobalFunDef
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
@@ -492,12 +495,14 @@ interpWrap s funDefs = interp s funDefs (MtSub)
 multipleInterp :: [Expr] -> [GlobalFunDef] -> [ExprValue]
 multipleInterp s funDefs = (map (\x -> (interpWrap x funDefs)) s)
 
+
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
-interpVal (BoolV b) = show b
-interpVal (ListV vals) = show (map interpVal vals)
-interpVal (StringV s) = s
+interpVal (BoolV b) = boolToString b
+interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"
+interpVal (StringV s) = "\"" ++ s ++ "\""
 interpVal (ClosureV _ _ _) = "internal function"
+
 
 multipleInterpVal :: [ExprValue] -> [String]
 multipleInterpVal evs = (map interpVal evs)
@@ -528,6 +533,10 @@ evalWithStdLib expr file =
 
 --     -- let expr = "\"hello\""
 
+--     let expr = "[1 2 3 4 5]"
+
+--     print (lexer expr)
+
 --     -- expr <- (readFile "fac.scm")
 
 -- --     print expr
@@ -537,9 +546,16 @@ evalWithStdLib expr file =
 --     -- print (eval expr)
 
 --     -- let expr = "(case-split #t [#f (list 1 2 3)] [#f (list 4 5 6)] [else (list 9)])"
---     let expr = "(list 1 2 3) -- this should get ignored"
 
---     print (lexer expr)
+--     -- let expr = "(define (check-first lst) (case-split (first lst) [7 #t] [(+ 1 2 3 4) (check-first (rest lst))] [else (list 1 2 3 4)]))"
+
+--     -- let expr = "(define (my-test x y) (+ x y))"
+
+--     print (getAllExprs (lexer expr))
+
+    -- let expr = "(list 1 2 3) -- this should get ignored"
+
+    -- print (eval expr)
 
     -- let expr = "(+ 5 5)"
 

@@ -1,17 +1,15 @@
-(define (fib n) 
-    (if (= n 1) 
-    0 
-        (if (= n 2) 
-            1 
-            (+ (fib (- n 1)) (fib (- n 2))))))
 
-(fib 6)
-(fib 5)
-(fib 15)
 
-(define (factorial n)
-  (if (= n 0)
-      1
-      (* n (factorial (- n 1)))))
+(define (check-first lst) 
+    (case-split 
+        (first lst) 
+            [7 #t] 
+            [(+ 1 2 3 4) (check-first (rest lst))] 
+            [else (list 1 2 3 4)]))
 
-(factorial 5)
+(check-first [7])
+(check-first [10 7])
+(check-first [10 2 3])
+(check-first [5 5])
+
+
