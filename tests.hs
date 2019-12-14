@@ -127,6 +127,19 @@ main = hspec $ do
 
         it "Functions without arguments" $ do
             eval (stdlib ++ "(empty)") `shouldBe` ["'()"]
+
+        it "Functions without arguments lambda" $ do
+            eval ("(lambda () 5)") `shouldBe` ["internal function"]
+
+        it "Function application without arguments" $ do
+            eval ("((lambda () 5))") `shouldBe` ["5"]
+
+        it "cond with multiple cases" $ do
+            eval "(cond [(= 2 3) \"case one\"] \
+                    \   [(= 3 4) \"case two\"] \
+                    \   [else \"else\"])" `shouldBe` ["\"else\""]
+
+        
         
 
 
