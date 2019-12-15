@@ -238,7 +238,7 @@ appHelper :: [LispVal] -> WExpr
 appHelper lv = (AppW (parser (head lv)) (map parser (tail lv)))
 
 isBoolean :: String -> Bool
-isBoolean s = (s == "#t") || (s == "#f")
+isBoolean s = (s == "#t") || (s == "#f") || (s == "#true") || (s == "#false") || (s == "#True") || (s == "#False")
 
 unWrapBracket :: LispVal -> [LispVal]
 unWrapBracket (ListVal l) = l
@@ -265,6 +265,17 @@ getAllButLast :: [a] -> [a]
 getAllButLast lst = reverse (tail (reverse lst))
 
 -- TODO come back here
+-- leftFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
+-- leftFoldOptimization fnW fn args =
+--     if (length args == 0)
+--         then error "Compile - leftFoldOptimization with no arguments"
+--         else if (length args == 2)
+--             then (fn (compile (head args)) (compile (last args)))
+--             else if (length args == 1)
+--                 then (compile (head args))
+--                 else (fn (compile (fnW (take 2 args))) (compile (fnW (drop 2 args))))
+
+-- TODO come back here
 leftFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 leftFoldOptimization fnW fn args =
     if (length args == 0)
@@ -273,7 +284,24 @@ leftFoldOptimization fnW fn args =
             then (fn (compile (head args)) (compile (last args)))
             else if (length args == 1)
                 then (compile (head args))
-                else (fn (compile (fnW (take 2 args))) (compile (fnW (drop 2 args))))
+                -- else (fn (compile (fnW (take 2 args))) (compile (fnW (drop 2 args))))
+                else (fn (compile (fnW (getAllButLast args))) (compile (last args)))
+
+
+{-
+
+(- 10 5 3 2) -> (- (- (- 10 5) 3) 2)
+
+-}
+
+
+-- boolFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
+-- boolFoldOptimization fnW fn conds =
+--     if (length conds == 0)
+--         then error "Compile - bool operation with no arguments"
+--         else if (length conds == 2)
+--             then (fn (compile (head conds)) (compile (last conds)))
+--             else (fn (compile (fnW (take 2 conds))) (compile (fnW (drop 2 conds))))
 
 boolFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 boolFoldOptimization fnW fn conds =
@@ -281,15 +309,27 @@ boolFoldOptimization fnW fn conds =
         then error "Compile - bool operation with no arguments"
         else if (length conds == 2)
             then (fn (compile (head conds)) (compile (last conds)))
-            else (fn (compile (fnW (take 2 conds))) (compile (fnW (drop 2 conds))))
+            else (fn (compile (head conds)) (compile (fnW (tail conds))))
+
+
+-- compFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
+-- compFoldOptimization fnW fn args = 
+--     if (length args == 0)
+--         then error "compile - comparator with no arguments"
+--         else if (length args == 1) -- this makes, no sense
+--             then (fn (compile (head args)) (compile (last args)))
+--             else (And (fn (compile (head args)) (compile (head (tail args)))) (compile (fnW (tail args))))
 
 compFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 compFoldOptimization fnW fn args = 
     if (length args == 0)
         then error "compile - comparator with no arguments"
-        else if (length args == 1)
+        else if (length args == 2) -- this makes, no sense
             then (fn (compile (head args)) (compile (last args)))
-            else (And (fn (compile (head args)) (compile (head (tail args)))) (compile (fnW (tail args))))
+            else if (length args == 1)
+                then (Boolean "#t")
+                else (And (fn (compile (head args)) (compile (head (tail args)))) (compile (fnW (tail args))))
+
 
 
 compile :: WExpr -> Expr
@@ -297,7 +337,7 @@ compile (NumbW n) = Numb n
 compile (BooleanW b) = Boolean b
 compile (SymW s) = Sym s
 compile (StringW s) = StringE s
-compile (AddW args) = leftFoldOptimization AddW Add args
+compile (AddW args) = boolFoldOptimization AddW Add args
 compile (SubW args) = leftFoldOptimization SubW Sub args
 compile (MultW args) = leftFoldOptimization MultW Mult args
 compile (DivW args) = leftFoldOptimization DivW Div args
@@ -476,11 +516,12 @@ interp (Append l r) funDefs ds = (ListV ((listOpV (interp l funDefs ds)) ++ (lis
 interp (Not cond) funDefs ds = (BoolV (not (boolOp (interp cond funDefs ds))))
 interp (EmptyE lst) funDefs ds = (BoolV (length (listOpV (interp lst funDefs ds)) == 0))
 interp (And lhs rhs) funDefs ds =  -- TODO check if this is actually a necessary optimization?
-    if (interp lhs funDefs ds) == (BoolV False)
-        then (BoolV False)
-        else if (interp rhs funDefs ds) == (BoolV True)
-            then (BoolV True)
-            else (BoolV False)
+    if (interp lhs funDefs ds) == (BoolV True)
+        then (interp rhs funDefs ds)
+        else (BoolV False)
+        -- else if (interp rhs funDefs ds) == (BoolV True)
+        --     then (BoolV True)
+        --     else (BoolV False)
 interp (Or lhs rhs) funDefs ds = 
     if (interp lhs funDefs ds) == (BoolV True)
         then (BoolV True)
@@ -533,7 +574,13 @@ evalWithStdLib expr file =
 
 --     -- let expr = "\"hello\""
 
---     let expr = "[1 2 3 4 5]"
+--     -- let expr = "(and #t #t #t)"
+
+--     let expr = "(< 0 1 2 3 4 5)"
+
+-- --     -- print (eval expr)
+
+--     print (compileMap (parserWrapper (getAllExprs (lexer expr))))
 
 --     print (lexer expr)
 

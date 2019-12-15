@@ -139,7 +139,84 @@ main = hspec $ do
                     \   [(= 3 4) \"case two\"] \
                     \   [else \"else\"])" `shouldBe` ["\"else\""]
 
-        
+        it "list with tick notation" $ do
+            eval "'(1 2 3 4)" `shouldBe` ["'(1 2 3 4)"]
+
+        it "list with list notation" $ do
+            eval "(list 1 2 3 4)" `shouldBe` ["'(1 2 3 4)"]
+
+        it "list with bracket notation" $ do
+            eval "[1 2 3 4]" `shouldBe` ["'(1 2 3 4)"]
+
+        it "Addition with multiple arguments" $ do
+            eval "(+ 1 2 3 4 5)" `shouldBe` ["15"]
+
+        it "Subtraction with multiple arguments" $ do
+            eval "(- 10 5 3 2)" `shouldBe` ["0"]
+
+        it "Multiplication with multiple arguments" $ do
+            eval "(* 1 2 3 4 5)" `shouldBe` ["120"]
+
+        it "Division with multiple arguments, odd" $ do
+            eval "(/ 100 10 5)" `shouldBe` ["2"]
+
+        it "Division with multiple arguments, even" $ do
+            eval "(/ 1000 10 10 5)" `shouldBe` ["2"]
+
+        it "AND with multiple arguments" $ do
+            eval "(and #t #t #t #t)" `shouldBe` ["#t"]
+
+        it "AND with muliple arguments, different notations" $ do
+            eval "(and #t #t #true #t)" `shouldBe` ["#t"]
+
+        it "AND with muliple arguments, different notations, odd numbered arguments" $ do
+            eval "(and #t #t #t)" `shouldBe` ["#t"]
+
+        it "AND with multiple arguments" $ do
+            eval "(and #t #t #false #t)" `shouldBe` ["#f"]
+
+        it "OR with multiple arguments" $ do
+            eval "(or #t #f #t)" `shouldBe` ["#t"]
+
+        it "OR with multiple arguments" $ do
+            eval "(or #f #f #f #f)" `shouldBe` ["#f"]
+
+        it "< with 2 arguments, true" $ do
+            eval "(< 10 1000)" `shouldBe` ["#t"]
+
+        it "< with 2 arguments, false" $ do
+            eval "(< 1000 10)" `shouldBe` ["#f"]
+
+        it "< with multiple arguments, 5, true" $ do
+            eval "(< 0 1 2 3 4)" `shouldBe` ["#t"]
+
+        it "< with multiple arguments, 4, true" $ do
+            eval "(< 0 1 2 4)" `shouldBe` ["#t"]
+
+        it "< with multiple arguments, 3, false" $ do
+            eval "(< 1 10 2)" `shouldBe` ["#f"]
+
+        it "< with multiple arguments, 4, false" $ do
+            eval "(< 100 0 1)" `shouldBe` ["#f"]
+
+        it "> with 2 arguments, false" $ do
+            eval "(> 10 1000)" `shouldBe` ["#f"]
+
+        it "> with 2 arguments, true" $ do
+            eval "(> 1000 10)" `shouldBe` ["#t"]
+
+        it "> with multiple arguments, 5, false" $ do
+            eval "(> 0 1 2 3 4)" `shouldBe` ["#f"]
+
+        it "> with multiple arguments, 4, false" $ do
+            eval "(> 0 1 2 4)" `shouldBe` ["#f"]
+
+        it "> with multiple arguments, 3, true" $ do
+            eval "(> 100 10 2)" `shouldBe` ["#t"]
+
+        it "> with multiple arguments, 4, true" $ do
+            eval "(> 100 2 1)" `shouldBe` ["#t"]
+
         
 
 
