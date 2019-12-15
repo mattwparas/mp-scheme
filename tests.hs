@@ -134,10 +134,20 @@ main = hspec $ do
         it "Function application without arguments" $ do
             eval ("((lambda () 5))") `shouldBe` ["5"]
 
-        it "cond with multiple cases" $ do
+        it "cond with multiple cases - else case" $ do
             eval "(cond [(= 2 3) \"case one\"] \
                     \   [(= 3 4) \"case two\"] \
                     \   [else \"else\"])" `shouldBe` ["\"else\""]
+
+        it "cond with multiple cases - first case" $ do
+            eval "(cond [(= 2 2) \"case one\"] \
+                    \   [(= 3 4) \"case two\"] \
+                    \   [else \"else\"])" `shouldBe` ["\"case one\""]
+
+        it "cond with multiple cases - first case" $ do
+            eval "(cond [(= 2 3) \"case one\"] \
+                    \   [(= 3 3) \"case two\"] \
+                    \   [else \"else\"])" `shouldBe` ["\"case two\""]
 
         it "list with tick notation" $ do
             eval "'(1 2 3 4)" `shouldBe` ["'(1 2 3 4)"]
@@ -238,7 +248,6 @@ main = hspec $ do
         it "<= with multiple arguments, 4, false" $ do
             eval "(<= 100 0 1 3)" `shouldBe` ["#f"]
 
-
         it ">= with 2 arguments, true" $ do
             eval "(>= 1000 10)" `shouldBe` ["#t"]
 
@@ -259,17 +268,27 @@ main = hspec $ do
 
         it ">= with multiple arguments, 4, true" $ do
             eval "(>= 100 10 1 0)" `shouldBe` ["#t"]
+
+        it "= with multiple arguments, 3, true" $ do
+            eval "(= 3 3 3)" `shouldBe` ["#t"]
+            
+        it "= with multiple arguments, 4, true" $ do
+            eval "(= 3 3 3 3)" `shouldBe` ["#t"]
+
+        it "= with multiple arguments, 3, false" $ do
+            eval "(= 3 3 4)" `shouldBe` ["#f"]
+
+        it "= with multiple arguments, 4, false" $ do
+            eval "(= 3 3 3 4)" `shouldBe` ["#f"]
+
+        it "first" $ do
+            eval "(first '(1 2 3 4))" `shouldBe` ["1"]
         
+        it "rest" $ do
+            eval "(rest '(1 2 3 4))" `shouldBe` ["'(2 3 4)"]
 
+        it "cons" $ do
+            eval "(cons 1 '(2 3 4))" `shouldBe` ["'(1 2 3 4)"]
 
-
-
-
-
-
-
-
-
-
-
-
+        it "append" $ do
+            eval "(append [1 2] [3 4])" `shouldBe` ["'(1 2 3 4)"]

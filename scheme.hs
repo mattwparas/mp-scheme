@@ -20,6 +20,9 @@ import Text.Parsec.Language (haskell)
 
 {------------ Lexing ------------}
 
+-- need a new monad that wraps LispVal with like Eval Expr and IO Expr
+
+
 data LispVal
   = Symbol String
     | StringVal String
@@ -265,17 +268,6 @@ getAllButLast :: [a] -> [a]
 getAllButLast lst = reverse (tail (reverse lst))
 
 -- TODO come back here
--- leftFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
--- leftFoldOptimization fnW fn args =
---     if (length args == 0)
---         then error "Compile - leftFoldOptimization with no arguments"
---         else if (length args == 2)
---             then (fn (compile (head args)) (compile (last args)))
---             else if (length args == 1)
---                 then (compile (head args))
---                 else (fn (compile (fnW (take 2 args))) (compile (fnW (drop 2 args))))
-
--- TODO come back here
 leftFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 leftFoldOptimization fnW fn args =
     if (length args == 0)
@@ -288,21 +280,6 @@ leftFoldOptimization fnW fn args =
                 else (fn (compile (fnW (getAllButLast args))) (compile (last args)))
 
 
-{-
-
-(- 10 5 3 2) -> (- (- (- 10 5) 3) 2)
-
--}
-
-
--- boolFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
--- boolFoldOptimization fnW fn conds =
---     if (length conds == 0)
---         then error "Compile - bool operation with no arguments"
---         else if (length conds == 2)
---             then (fn (compile (head conds)) (compile (last conds)))
---             else (fn (compile (fnW (take 2 conds))) (compile (fnW (drop 2 conds))))
-
 boolFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 boolFoldOptimization fnW fn conds =
     if (length conds == 0)
@@ -311,14 +288,6 @@ boolFoldOptimization fnW fn conds =
             then (fn (compile (head conds)) (compile (last conds)))
             else (fn (compile (head conds)) (compile (fnW (tail conds))))
 
-
--- compFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
--- compFoldOptimization fnW fn args = 
---     if (length args == 0)
---         then error "compile - comparator with no arguments"
---         else if (length args == 1) -- this makes, no sense
---             then (fn (compile (head args)) (compile (last args)))
---             else (And (fn (compile (head args)) (compile (head (tail args)))) (compile (fnW (tail args))))
 
 compFoldOptimization :: ([WExpr] -> WExpr) -> (Expr -> Expr -> Expr) -> [WExpr] -> Expr
 compFoldOptimization fnW fn args = 
@@ -354,14 +323,15 @@ compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile na
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
-        then error ("Compile - Nullary Application: " ++ (show funExpr)) -- TODO make it so you can use no arguments
+        then error ("Compile - Nullary Application: " ++ (show funExpr)) -- TODO make it so you can use no arguments!
+        -- then (App )
         else if (length argExprs == 1)
             then (App (compile funExpr) (compile (head argExprs)))
             else (App (compile (AppW funExpr (getAllButLast argExprs))) (compile (last argExprs)))
 
 compile (FunW paramNames body) =
     if (length paramNames) == 0
-        then error "Compile - Nullary Function"
+        then error "Compile - Nullary Function" -- TODO make it so you can use no arguments!
         else if (length paramNames == 1)
             then (Fun (head paramNames) (compile body))
             else (Fun (head paramNames) (compile (FunW (tail paramNames) body)))
@@ -429,6 +399,7 @@ evalEquality (BoolV l) (BoolV r) = BoolV (l == r)
 evalEquality _ _ = BoolV False
 
 appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> ExprValue
+-- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
 appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
@@ -487,7 +458,7 @@ interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > 
 interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
 interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
 interp (App funExpr argExpr) funDefs ds = appEval (interp funExpr funDefs ds) (interp argExpr funDefs ds) funDefs
-interp (Fun paramName body) _ ds = (ClosureV paramName body ds)
+interp (Fun paramName body) _ ds = (ClosureV paramName body ds) -- paramName has to be some or none
 interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
     if (evalTestBool (interp test funDefs ds))
         then (interp thn funDefs ds)
@@ -548,8 +519,19 @@ interpVal (ClosureV _ _ _) = "internal function"
 multipleInterpVal :: [ExprValue] -> [String]
 multipleInterpVal evs = (map interpVal evs)
 
+
+{-
+Somehow, inject the string from the path 
+into the file in some capacity at run time
+(ideally, lazily in some way but idk if I can pull that off)
+-}
+slurp :: ExprValue -> IO String
+slurp (StringV s) = readFile s
+slurp e = error ("Not a valid path" ++ (show e))
+
+
 eval :: String -> [String]
-eval expr = 
+eval expr =
     (multipleInterpVal 
     (multipleInterp
     (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
@@ -576,39 +558,19 @@ evalWithStdLib expr file =
 
 --     -- let expr = "(and #t #t #t)"
 
---     let expr = "(< 0 1 2 3 4 5)"
+--     let expr = "(lambda () (+ 5 5))"
+--     let expr2 = "((lambda () (+ 5 5)))"
 
--- --     -- print (eval expr)
-
---     print (compileMap (parserWrapper (getAllExprs (lexer expr))))
-
---     print (lexer expr)
-
---     -- expr <- (readFile "fac.scm")
-
--- --     print expr
-
---     -- print (lexer expr)
+--     print (parserWrapper (getAllExprs (lexer expr)))
+--     print (parserWrapper (getAllExprs (lexer expr2)))
 
 --     -- print (eval expr)
 
---     -- let expr = "(case-split #t [#f (list 1 2 3)] [#f (list 4 5 6)] [else (list 9)])"
+    -- print (compileMap (parserWrapper (getAllExprs (lexer expr))))
 
---     -- let expr = "(define (check-first lst) (case-split (first lst) [7 #t] [(+ 1 2 3 4) (check-first (rest lst))] [else (list 1 2 3 4)]))"
+    -- print (lexer expr)
 
---     -- let expr = "(define (my-test x y) (+ x y))"
-
---     print (getAllExprs (lexer expr))
-
-    -- let expr = "(list 1 2 3) -- this should get ignored"
-
-    -- print (eval expr)
-
-    -- let expr = "(+ 5 5)"
-
-    -- print (eval expr)
-
-    -- print (parserWrapper (getAllExprs (lexer expr)))
+    -- expr <- (readFile "fac.scm")
 
 
 
