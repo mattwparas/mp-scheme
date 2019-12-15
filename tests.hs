@@ -217,6 +217,48 @@ main = hspec $ do
         it "> with multiple arguments, 4, true" $ do
             eval "(> 100 2 1)" `shouldBe` ["#t"]
 
+        it "<= with 2 arguments, true" $ do
+            eval "(<= 10 1000)" `shouldBe` ["#t"]
+
+        it "<= with 2 arguments, true, equal" $ do
+            eval "(<= 10 10)" `shouldBe` ["#t"]
+
+        it "<= with 2 arguments, false" $ do
+            eval "(<= 1000 10)" `shouldBe` ["#f"]
+
+        it "<= with multiple arguments, 5, true" $ do
+            eval "(<= 0 1 2 3 4)" `shouldBe` ["#t"]
+
+        it "<= with multiple arguments, 4, true" $ do
+            eval "(<= 0 1 2 4)" `shouldBe` ["#t"]
+
+        it "<= with multiple arguments, 3, false" $ do
+            eval "(<= 1 10 2)" `shouldBe` ["#f"]
+
+        it "<= with multiple arguments, 4, false" $ do
+            eval "(<= 100 0 1 3)" `shouldBe` ["#f"]
+
+
+        it ">= with 2 arguments, true" $ do
+            eval "(>= 1000 10)" `shouldBe` ["#t"]
+
+        it ">= with 2 arguments, true, equal" $ do
+            eval "(>= 10 10)" `shouldBe` ["#t"]
+
+        it ">= with 2 arguments, true" $ do
+            eval "(>= 1000 10)" `shouldBe` ["#t"]
+
+        it ">= with multiple arguments, 5, false" $ do
+            eval "(>= 0 1 2 3 4)" `shouldBe` ["#f"]
+
+        it ">= with multiple arguments, 4, false" $ do
+            eval "(>= 0 1 2 4)" `shouldBe` ["#f"]
+
+        it ">= with multiple arguments, 3, true" $ do
+            eval "(>= 100 10 2)" `shouldBe` ["#t"]
+
+        it ">= with multiple arguments, 4, true" $ do
+            eval "(>= 100 10 1 0)" `shouldBe` ["#t"]
         
 
 

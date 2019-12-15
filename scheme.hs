@@ -485,7 +485,7 @@ interp (Equal lhs rhs) funDefs ds = BoolV ((interp lhs funDefs ds) == (interp rh
 interp (Lt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) < (checkNumber (interp rhs funDefs ds)))
 interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > (checkNumber (interp rhs funDefs ds)))
 interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
-interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
+interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
 interp (App funExpr argExpr) funDefs ds = appEval (interp funExpr funDefs ds) (interp argExpr funDefs ds) funDefs
 interp (Fun paramName body) _ ds = (ClosureV paramName body ds)
 interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
