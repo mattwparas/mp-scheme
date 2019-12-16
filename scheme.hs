@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Scheme where
+
 import Data.Typeable (Typeable)
 import Data.Tree
 import Text.Parsec
@@ -143,8 +144,10 @@ data Expr =
     | LtE Expr Expr
     | GtE Expr Expr
     | Cond Expr Expr Expr
-    | Fun String Expr
-    | App Expr Expr
+    -- | Fun String Expr -- Fun [String] Expr - TODO
+    -- | App Expr Expr -- App Expr [Expr] - TODO
+    | Fun [String] Expr
+    | App Expr [Expr]
     | ListE [Expr]
     | And Expr Expr
     | Or Expr Expr
@@ -393,24 +396,26 @@ compile (LtW args) = compFoldOptimization LtW Lt args
 compile (GtEW args) = compFoldOptimization GtEW GtE args
 compile (LtEW args) = compFoldOptimization LtEW LtE args
 compile (CondW tst thn els) = (Cond (compile tst) (compile thn) (compile els))
-compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile namedExpr))
+compile (WithW name namedExpr body) = (App (Fun [name] (compile body)) [(compile namedExpr)])
 compile (SlurpW path) = (Slurp (compile path))
 compile (SpitW path val) = (Spit (compile path) (compile val))
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
-        then error ("Compile - Nullary Application: " ++ (show funExpr)) -- TODO make it so you can use no arguments!
+        then (App (compile funExpr) [])
+        -- then error ("Compile - Nullary Application: " ++ (show funExpr)) -- TODO make it so you can use no arguments!
         -- then (App )
         else if (length argExprs == 1)
-            then (App (compile funExpr) (compile (head argExprs)))
-            else (App (compile (AppW funExpr (getAllButLast argExprs))) (compile (last argExprs)))
+            then (App (compile funExpr) [(compile (head argExprs))])
+            else (App (compile (AppW funExpr (getAllButLast argExprs))) [(compile (last argExprs))])
 
 compile (FunW paramNames body) =
     if (length paramNames) == 0
-        then error "Compile - Nullary Function" -- TODO make it so you can use no arguments!
+        then (Fun [] (compile body))
+        -- then error "Compile - Nullary Function" -- TODO make it so you can use no arguments!
         else if (length paramNames == 1)
-            then (Fun (head paramNames) (compile body))
-            else (Fun (head paramNames) (compile (FunW (tail paramNames) body)))
+            then (Fun [(head paramNames)] (compile body))
+            else (Fun [(head paramNames)] (compile (FunW (tail paramNames) body)))
 
 compile (FirstW lst) = (First (compile lst))
 compile (RestW lst) = (Rest (compile lst))
@@ -479,6 +484,12 @@ appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> Eval ExprValue
 appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
+appEvalNoArgs :: ExprValue -> [GlobalFunDef] -> Eval ExprValue
+-- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
+appEvalNoArgs (ClosureV paramName body ds) funDefs = (interp body funDefs ds)
+appEvalNoArgs _ _ = error "expected function"
+
+
 matchStrToBool :: String -> Bool
 matchStrToBool "#t" = True
 matchStrToBool "#f" = False
@@ -513,11 +524,11 @@ boolToString :: Bool -> String
 boolToString True = "#t"
 boolToString False = "#f"
 
-extractValue :: ExprValue -> Expr
-extractValue (ListV lst) = (ListE (map extractValue lst))
-extractValue (NumV n) = (Numb n)
-extractValue (BoolV b) = (Boolean (boolToString b))
-extractValue (ClosureV paramName body ds) = (Fun paramName body)
+-- extractValue :: ExprValue -> Expr
+-- extractValue (ListV lst) = (ListE (map extractValue lst))
+-- extractValue (NumV n) = (Numb n)
+-- extractValue (BoolV b) = (Boolean (boolToString b))
+-- extractValue (ClosureV paramName body ds) = (Fun paramName body)
 
 boolOp :: ExprValue -> Bool
 boolOp (BoolV b) = b
@@ -623,12 +634,19 @@ interp (GtE lhs rhs) funDefs ds = do
 -- interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > (checkNumber (interp rhs funDefs ds)))
 -- interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
 -- interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
-interp (App funExpr argExpr) funDefs ds = do
+interp (App funExpr (argExpr:xs)) funDefs ds = do
     fn <- (interp funExpr funDefs ds)
     ag <- (interp argExpr funDefs ds)
     appEval fn ag funDefs
 
-interp (Fun paramName body) _ ds = return (ClosureV paramName body ds) -- paramName has to be some or none
+interp (App funExpr []) funDefs ds = do
+    fn <- (interp funExpr funDefs ds)
+    appEvalNoArgs fn funDefs
+
+interp (Fun paramName body) _ ds = 
+    if paramName == []
+        then return (ClosureV "" body ds) -- paramName has to be some or none
+        else return (ClosureV (head paramName) body ds)
 
 interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
     do
@@ -793,34 +811,36 @@ evalWithStdLib expr file = do
 
 --     -- let expr = "\"hello\""
 
---     let expr = "(slurp \"fac.scm\")"
+--     -- let expr = "(slurp \"fac.scm\")"
 
---     -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+--     -- -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
 
---     test1 <- eval expr
+--     -- test1 <- eval expr
 
---     print (test1)
+--     -- print (test1)
 
-    -- let expr2 = (StringV "fac.scm")
+--     -- let expr2 = (StringV "fac.scm")
 
-    -- let res2 = (slurp expr2)
+--     -- let res2 = (slurp expr2)
 
-    -- -- print (res)
+--     -- print (res)
 
-    -- -- let undo = runReaderT (unEval res) (StringW "")
+--     -- let undo = runReaderT (unEval res) (StringW "")
 
-    -- -- print (undo)
+--     -- print (undo)
 
-    -- -- unEval res
+--     -- unEval res
 
-    -- test <- runReaderT (unEval res2) (StringW "")
+--     -- test <- runReaderT (unEval res2) (StringW "")
 
-    -- print (test)
-
-    -- let expr2 = "((lambda () (+ 5 5)))"
+--     -- print (test)
+--     let expr = "(lambda () (+ 5 5))"
+--     let expr2 = "((lambda () (+ 5 5)))"
 
 --     print (parserWrapper (getAllExprs (lexer expr)))
 --     print (parserWrapper (getAllExprs (lexer expr2)))
+
+
 
 --     -- print (eval expr)
 

@@ -7,8 +7,6 @@ import Scheme
 main :: IO ()
 main = hspec $ do
 
-    -- stdLib <- (readFile "stdlib.scm")
-
     let stdlib = "\
             \(define (caar pair) (car (car pair)))\
             \(define (cadr pair) (car (cdr pair)))\
@@ -73,6 +71,8 @@ main = hspec $ do
             \(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))\
             \(define (even x) (if (= x 0) #t (odd (- x 1))))\
             \(define (odd x) (if (= x 0) #f (even (- x 1))))"
+
+    -- stdlib <- readFile "stdlib.scm"
 
     -- describe "Prelude.head" $ do
     --     it "returns the first element of a list" $ do
@@ -356,3 +356,7 @@ main = hspec $ do
         it "append" $ do
             res <- eval "(append [1 2] [3 4])" 
             res `shouldBe` ["'(1 2 3 4)"]
+
+        it "empty stdlib" $ do
+            res <- eval (stdlib ++ "(empty)")
+            res `shouldBe` ["'()"]
