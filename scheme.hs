@@ -1,7 +1,8 @@
--- {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Scheme where
-
+import Data.Typeable (Typeable)
 import Data.Tree
 import Text.Parsec
 import Text.Parsec.String
@@ -17,6 +18,22 @@ import Text.Parsec.Token
        (integer, float, whiteSpace, stringLiteral, makeTokenParser)
 import Text.Parsec.Char (noneOf)
 import Text.Parsec.Language (haskell)
+
+import Control.Monad.IO.Class
+import Control.Monad.Reader
+import Control.Exception hiding (handle)
+
+-- import Data.Monoid
+import System.Directory
+import System.IO as SIO
+-- import Data.Text.IO as TIO
+import Control.Monad.Reader
+-- import Network
+
+import Data.Text.IO as TIO
+import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter)
+
+-- import Network.HTTP
 
 {------------ Lexing ------------}
 
@@ -107,6 +124,8 @@ data WExpr =
     | EmptyW WExpr
     | CondWT [(WExpr, WExpr)] WExpr
     | CaseW WExpr [(WExpr, WExpr)] WExpr
+    | SlurpW WExpr
+    | SpitW WExpr WExpr
     deriving (Eq, Show)
 
 data Expr = 
@@ -137,7 +156,59 @@ data Expr =
     | EmptyE Expr
     | CondT [(Expr, Expr)] Expr
     | Case Expr [(Expr, Expr)] Expr
+    | Slurp Expr
+    | Spit Expr Expr
     deriving (Eq, Show)
+
+
+newtype Eval a = Eval { unEval :: ReaderT WExpr IO a }
+    deriving (Monad, Functor, Applicative, MonadIO)
+
+
+slurp :: ExprValue -> Eval ExprValue
+slurp (StringV txt) = liftIO $ readTextToStringV txt
+slurp val = error ("read expects string, instead got: " ++ (show val))
+
+
+readTextToStringV :: String -> IO ExprValue
+readTextToStringV path = do
+    exists <- doesFileExist $ path
+    if exists
+        then (SIO.readFile path) >>= (return . StringV)
+        else error (" file does not exist: " ++ path)
+
+-- TODO come back here
+
+-- wSlurp :: ExprValue -> Eval ExprValue
+-- wSlurp (StringV txt) = liftIO $ openURL txt
+-- wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
+
+-- openURL :: String -> IO LispVal
+-- openURL x = do
+--   req  <- simpleHTTP (getRequest $ x)
+--   body <- getResponseBody req
+--   return $ String $ body
+
+
+
+put :: ExprValue -> ExprValue -> Eval ExprValue
+put (StringV path) (StringV msg) = liftIO $ wFilePut path msg
+put (StringV _) val = 
+    error ("put expects string in the second argument (try using show), instead got : " ++ (show val))
+put val _ = error ("put expected string, instead got: " ++ (show val))
+
+
+wFilePut :: String -> String -> IO ExprValue
+wFilePut fileName msg = withFile fileName WriteMode go
+    where go = putTextFile fileName msg
+
+putTextFile :: String -> String -> Handle -> IO ExprValue
+putTextFile fileName msg handle = do
+    canWrite <- hIsWritable handle
+    if canWrite
+    then (TIO.hPutStr handle (T.pack msg)) >> (return $ StringV msg)
+    else error (" file does not exist: " ++ fileName)
+
 
 -- Replace this with a HashMap
 data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
@@ -234,6 +305,8 @@ switchSymbol "cons" lv = (ConsW (parser (head lv)) (parser (lv !! 1))) -- expand
 switchSymbol "append" lv = (AppendW (parser (head lv)) (parser (lv !! 1))) -- expand to be any number
 switchSymbol "not" lv = (NotW (parser (head lv)))
 switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
+switchSymbol "slurp!" lv = (SlurpW (parser (head lv)))
+switchSymbol "spit!" lv = (SpitW (parser (head lv)) (parser (last lv)))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 
@@ -260,6 +333,7 @@ parser (List ((List x):xs)) = appHelper ((List x):xs)
 parser (List ((ListVal x):xs)) = (ListW (map parser x)) -- this could be my cond case!
 parser (List ((Symbol x):xs)) = switchSymbol x xs
 parser (ListVal x) = (ListW (map parser x))
+parser _ = error "pattern not matched"
 
 parserWrapper :: [LispVal] -> [WExpr]
 parserWrapper lv = (map parser lv)
@@ -320,6 +394,8 @@ compile (GtEW args) = compFoldOptimization GtEW GtE args
 compile (LtEW args) = compFoldOptimization LtEW LtE args
 compile (CondW tst thn els) = (Cond (compile tst) (compile thn) (compile els))
 compile (WithW name namedExpr body) = (App (Fun name (compile body)) (compile namedExpr))
+compile (SlurpW path) = (Slurp (compile path))
+compile (SpitW path val) = (Spit (compile path) (compile val))
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
@@ -351,11 +427,11 @@ compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)
 
 -- Lookup symbol to see if in DS, if not check global function definitions
-lookupDS :: LispVal -> [GlobalFunDef] -> DefSub -> ExprValue
+lookupDS :: LispVal -> [GlobalFunDef] -> DefSub -> Eval ExprValue
 lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
 lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
     if s1 == s2
-        then val
+        then return val
         else (lookupDS (Symbol s1) funDefs rest)
 lookupDS _ _ _ = error "lookupDS malformed"
 
@@ -398,7 +474,7 @@ evalEquality (NumV l) (NumV r) = BoolV (l == r)
 evalEquality (BoolV l) (BoolV r) = BoolV (l == r)
 evalEquality _ _ = BoolV False
 
-appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> ExprValue
+appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> Eval ExprValue
 -- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
 appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
 appEval _ _ _ = error "expected function"
@@ -414,11 +490,16 @@ matchStrToBool "#True" = True
 matchStrToBool "#False" = False
 matchStrToBool _ = error "Boolean malformed"
 
-defSubHelper :: [String] -> [GlobalFunDef] -> [Expr] -> DefSub -> DefSub
-defSubHelper [] funDefs [] ds = (MtSub)
+defSubHelper :: [String] -> [GlobalFunDef] -> [Expr] -> DefSub -> Eval DefSub
+defSubHelper [] funDefs [] ds = return (MtSub)
 defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
-defSubHelper (x:xs) funDefs (b:bs) ds = (ASub x (interp b funDefs ds) (defSubHelper xs funDefs bs ds))
+defSubHelper (x:xs) funDefs (b:bs) ds = 
+    do 
+        res <- (interp b funDefs ds)
+        defs <- (defSubHelper xs funDefs bs ds)
+        return (ASub x res defs)
+
 
 checkNumber :: ExprValue -> Number
 checkNumber (NumV n) = n
@@ -442,70 +523,208 @@ boolOp :: ExprValue -> Bool
 boolOp (BoolV b) = b
 boolOp _ = error "bool operation applied to non bool"
 
+stringOp :: ExprValue -> String
+stringOp (StringV s) = s
+stringOp e = error ("String operation applied to non string: " ++ (show e))
 
-interp :: Expr -> [GlobalFunDef] -> DefSub -> ExprValue
-interp (Numb n) _ _ = NumV n
-interp (Boolean b) _ _ = BoolV (matchStrToBool b)
-interp (Sym s) funDefs ds = lookupDS (Symbol s) funDefs ds
-interp (StringE s) _ _ = StringV s
-interp (Add lhs rhs) funDefs ds = numOpAdd (interp lhs funDefs ds) (interp rhs funDefs ds)
-interp (Sub lhs rhs) funDefs ds = numOpSub (interp lhs funDefs ds) (interp rhs funDefs ds)
-interp (Mult lhs rhs) funDefs ds = numOpMult (interp lhs funDefs ds) (interp rhs funDefs ds)
-interp (Div lhs rhs) funDefs ds = numOpDiv (interp lhs funDefs ds) (interp rhs funDefs ds)
-interp (Equal lhs rhs) funDefs ds = BoolV ((interp lhs funDefs ds) == (interp rhs funDefs ds))
-interp (Lt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) < (checkNumber (interp rhs funDefs ds)))
-interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > (checkNumber (interp rhs funDefs ds)))
-interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
-interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
-interp (App funExpr argExpr) funDefs ds = appEval (interp funExpr funDefs ds) (interp argExpr funDefs ds) funDefs
-interp (Fun paramName body) _ ds = (ClosureV paramName body ds) -- paramName has to be some or none
+stringToExpr :: ExprValue -> Eval Expr
+stringToExpr (StringV s) = return (StringE s)
+stringToExpr e = error ("String operation applied to non string: " ++ (show e))
+
+-- testInterp :: (Eval Expr) -> [GlobalFunDef] -> DefSub -> ExprValue
+-- testInterp (Eval (StringE s)) _ _ = StringV s
+
+-- data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
+--     deriving (Typeable)
+
+-- mkF :: ([LispVal] -> Eval LispVal) -> LispVal
+-- mkF = Fun . IFunc
+
+-- interpEval :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+-- interpEval (Slurp s) funDefs ds = interpExpr 
+
+-- interpEval expr funDefs ds = return (interp expr funDefs ds)
+
+-- interpExpr :: Expr -> [GlobalFunDef] -> DefSub -> Eval Expr
+-- interpExpr (Slurp s) funDefs ds = stringToExpr (interp (Slurp s) funDefs ds)
+
+
+    -- do
+    --     let res = stringToExpr >=> (interp s funDefs ds)
+    --     interp res funDefs ds
+
+
+
+-- interpSlurp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+-- interpSlurp expr funDefs ds = return (interp expr funDefs ds)
+
+-- TODO come back here
+interp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+interp (Numb n) _ _ = return (NumV n)
+interp (Boolean b) _ _ = return (BoolV (matchStrToBool b))
+interp (Sym s) funDefs ds = do 
+    res <- (lookupDS (Symbol s) funDefs ds)
+    return res
+
+interp (StringE s) _ _ = return (StringV s)
+-- interp (Slurp s) funDefs ds = 
+--     do
+--         (interpEval (Slurp s) funDefs ds)
+
+
+interp (Add lhs rhs) funDefs ds = do
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (numOpAdd l r)
+
+    -- res <- numOpAdd (interp lhs funDefs ds) (interp rhs funDefs ds)
+    -- return res
+interp (Sub lhs rhs) funDefs ds = do
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (numOpSub l r)
+
+interp (Mult lhs rhs) funDefs ds = do
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (numOpMult l r)
+
+interp (Div lhs rhs) funDefs ds = do
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (numOpDiv l r)
+
+interp (Equal lhs rhs) funDefs ds = do
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (BoolV (l == r))
+
+interp (Lt lhs rhs) funDefs ds = do 
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (BoolV ((checkNumber l) < (checkNumber r)))
+
+interp (Gt lhs rhs) funDefs ds = do 
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (BoolV ((checkNumber l) > (checkNumber r)))
+
+interp (LtE lhs rhs) funDefs ds = do 
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (BoolV ((checkNumber l) <= (checkNumber r)))
+
+interp (GtE lhs rhs) funDefs ds = do 
+    l <- interp lhs funDefs ds
+    r <- interp rhs funDefs ds
+    return (BoolV ((checkNumber l) >= (checkNumber r)))
+
+    -- BoolV ((checkNumber (interp lhs funDefs ds)) < (checkNumber (interp rhs funDefs ds)))
+-- interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > (checkNumber (interp rhs funDefs ds)))
+-- interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
+-- interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
+interp (App funExpr argExpr) funDefs ds = do
+    fn <- (interp funExpr funDefs ds)
+    ag <- (interp argExpr funDefs ds)
+    appEval fn ag funDefs
+
+interp (Fun paramName body) _ ds = return (ClosureV paramName body ds) -- paramName has to be some or none
+
 interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
-    if (evalTestBool (interp test funDefs ds))
-        then (interp thn funDefs ds)
-        else (interp els funDefs ds)
+    do
+        tst <- (interp test funDefs ds)
+        if (evalTestBool tst)
+            then (interp thn funDefs ds)
+            else (interp els funDefs ds)
 
 interp (CondT tests els) funDefs ds =
+    -- tst <- (interp (fst (head tests)) funDefs ds)
     if tests == []
         then (interp els funDefs ds)
-        else if (evalTestBool (interp (fst (head tests)) funDefs ds))
+        else do
+            tst <- (interp (fst (head tests)) funDefs ds)
+            if (evalTestBool tst)
             then (interp (snd (head tests)) funDefs ds)
             else (interp (CondT (tail tests) els) funDefs ds)
 
 interp (Case expr conds els) funDefs ds = -- TODO optimize this if possible
     if conds == []
         then (interp els funDefs ds)
-        else if (interp (fst (head conds)) funDefs ds) == (interp expr funDefs ds)
+        else do
+            l <- (interp (fst (head conds)) funDefs ds)
+            r <- (interp expr funDefs ds)
+            if l == r
             then (interp (snd (head conds)) funDefs ds)
             else (interp (Case expr (tail conds) els) funDefs ds)
 
+interp (Slurp s) funDefs ds = do
+    res <- (interp s funDefs ds)
+    (slurp res)
 
-interp (ListE vals) funDefs ds = (ListV (map (\x -> (interp x funDefs ds)) vals))
-interp (First lst) funDefs ds = (head (listOpV (interp lst funDefs ds)))-- need to split on the exprvalue cases for the result
-interp (Rest lst) funDefs ds = (ListV (tail (listOpV (interp lst funDefs ds))))
-interp (Cons l r) funDefs ds = (ListV ((interp l funDefs ds) : (listOpV (interp r funDefs ds)))) -- TODO expand to any number of arguments
-interp (Append l r) funDefs ds = (ListV ((listOpV (interp l funDefs ds)) ++ (listOpV (interp r funDefs ds)))) 
-interp (Not cond) funDefs ds = (BoolV (not (boolOp (interp cond funDefs ds))))
-interp (EmptyE lst) funDefs ds = (BoolV (length (listOpV (interp lst funDefs ds)) == 0))
-interp (And lhs rhs) funDefs ds =  -- TODO check if this is actually a necessary optimization?
-    if (interp lhs funDefs ds) == (BoolV True)
+interp (Spit path res) funDefs ds = do
+    filePath <- (interp path funDefs ds)
+    msg <- (interp res funDefs ds)
+    (put filePath msg)
+
+interp (ListE vals) funDefs ds = do
+    res <- (mapM (\x -> (interp x funDefs ds)) vals)
+    return (ListV res)
+
+    -- return (ListV (mapM (map (\x -> (interp x funDefs ds)) vals)))
+
+
+
+interp (First lst) funDefs ds = do 
+    res <- (interp lst funDefs ds)
+    return (head (listOpV res))
+    
+    -- (head (listOpV (interp lst funDefs ds)))-- need to split on the exprvalue cases for the result
+-- interp (First lst) funDefs ds = (interp (head (listOpV lst)) funDefs ds)
+interp (Rest lst) funDefs ds = do
+    res <- (interp lst funDefs ds)
+    return (ListV (tail (listOpV res)))
+    
+    -- (ListV (tail (listOpV (interp lst funDefs ds))))
+interp (Cons l r) funDefs ds = do
+    hd <- (interp l funDefs ds)
+    tl <- (interp r funDefs ds)
+    return (ListV (hd : (listOpV tl))) -- TODO expand to any number of arguments
+    
+interp (Append l r) funDefs ds = do
+    ll <- (interp l funDefs ds)
+    rr <- (interp r funDefs ds)
+    return (ListV ((listOpV ll) ++ (listOpV rr)))
+
+interp (Not cond) funDefs ds = do
+    res <- (interp cond funDefs ds)
+    return (BoolV (not (boolOp res)))
+interp (EmptyE lst) funDefs ds = do
+    res <- (interp lst funDefs ds)
+    return (BoolV (length (listOpV res) == 0))
+interp (And lhs rhs) funDefs ds =  do -- TODO check if this is actually a necessary optimization?
+    l <- (interp lhs funDefs ds)
+    if l == (BoolV True)
         then (interp rhs funDefs ds)
-        else (BoolV False)
+        else return (BoolV False)
         -- else if (interp rhs funDefs ds) == (BoolV True)
         --     then (BoolV True)
         --     else (BoolV False)
-interp (Or lhs rhs) funDefs ds = 
-    if (interp lhs funDefs ds) == (BoolV True)
-        then (BoolV True)
-        else if (interp rhs funDefs ds) == (BoolV True)
-            then (BoolV True)
-            else (BoolV False)
+interp (Or lhs rhs) funDefs ds = do
+    l <- (interp lhs funDefs ds)
+    if l == (BoolV True)
+        then return (BoolV True)
+        else do 
+            r <- (interp rhs funDefs ds)
+            if r == (BoolV True)
+            then return (BoolV True)
+            else return (BoolV False)
 
 -- TODO pick up here
-interpWrap :: Expr -> [GlobalFunDef] -> ExprValue
+interpWrap :: Expr -> [GlobalFunDef] -> Eval ExprValue
 interpWrap s funDefs = interp s funDefs (MtSub)
 
-multipleInterp :: [Expr] -> [GlobalFunDef] -> [ExprValue]
-multipleInterp s funDefs = (map (\x -> (interpWrap x funDefs)) s)
+multipleInterp :: [Expr] -> [GlobalFunDef] -> Eval [ExprValue]
+multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
 
 
 interpVal :: ExprValue -> String
@@ -519,31 +738,49 @@ interpVal (ClosureV _ _ _) = "internal function"
 multipleInterpVal :: [ExprValue] -> [String]
 multipleInterpVal evs = (map interpVal evs)
 
+multipleInterpValL :: Eval [ExprValue] -> Eval [String]
+multipleInterpValL = liftM multipleInterpVal
+
 
 {-
 Somehow, inject the string from the path 
 into the file in some capacity at run time
 (ideally, lazily in some way but idk if I can pull that off)
 -}
-slurp :: ExprValue -> IO String
-slurp (StringV s) = readFile s
-slurp e = error ("Not a valid path" ++ (show e))
+-- slurp :: ExprValue -> IO String
+-- slurp (StringV s) = readFile s
+-- slurp e = error ("Not a valid path" ++ (show e))
 
 
-eval :: String -> [String]
-eval expr =
-    (multipleInterpVal 
-    (multipleInterp
-    (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
-    (getFunDefs expr)))
 
+-- eval :: String -> [String]
+-- eval expr =
+--     (multipleInterpVal 
+--     (multipleInterp
+--     (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
+--     (getFunDefs expr)))
 
-evalWithStdLib :: String -> String -> [String]
-evalWithStdLib expr file =
-    (multipleInterpVal
-    (multipleInterp
-    (compileMap (parserWrapper (getAllExprs (lexer expr))))
-    ((getFunDefs file) ++ (getFunDefs expr))))
+eval :: String -> IO [String]
+eval expr = do
+    let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+    (runReaderT (unEval (multipleInterpValL res)) (StringW ""))
+
+    -- (map (\x -> (runReaderT (unEval x) (StringW ""))) test)
+
+evalWithStdLib :: String -> String -> IO [String]
+evalWithStdLib expr file = do
+    let res = 
+            (multipleInterp 
+            (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
+            ((getFunDefs file) ++ (getFunDefs expr)))
+    (runReaderT (unEval (multipleInterpValL res)) (StringW ""))
+
+-- evalWithStdLib :: String -> String -> [String]
+-- evalWithStdLib expr file =
+--     (multipleInterpVal
+--     (multipleInterp
+--     (compileMap (parserWrapper (getAllExprs (lexer expr))))
+--     ((getFunDefs file) ++ (getFunDefs expr))))
 
 
 
@@ -556,10 +793,31 @@ evalWithStdLib expr file =
 
 --     -- let expr = "\"hello\""
 
---     -- let expr = "(and #t #t #t)"
+--     let expr = "(slurp \"fac.scm\")"
 
---     let expr = "(lambda () (+ 5 5))"
---     let expr2 = "((lambda () (+ 5 5)))"
+--     -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+
+--     test1 <- eval expr
+
+--     print (test1)
+
+    -- let expr2 = (StringV "fac.scm")
+
+    -- let res2 = (slurp expr2)
+
+    -- -- print (res)
+
+    -- -- let undo = runReaderT (unEval res) (StringW "")
+
+    -- -- print (undo)
+
+    -- -- unEval res
+
+    -- test <- runReaderT (unEval res2) (StringW "")
+
+    -- print (test)
+
+    -- let expr2 = "((lambda () (+ 5 5)))"
 
 --     print (parserWrapper (getAllExprs (lexer expr)))
 --     print (parserWrapper (getAllExprs (lexer expr2)))

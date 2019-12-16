@@ -13,11 +13,13 @@ import Control.Exception
 --   doSomethingWith :: String -> IO ()
 --   doSomethingWith str = putStrLn str
 
-eval' :: String -> [String]
+eval' :: String -> IO [String]
 eval' input = eval input
 
-print' :: [String] -> IO ()
-print' = mapM_ putStrLn
+print' :: IO [String] -> IO ()
+print' lst = do
+    res <- lst
+    mapM_ putStrLn res
 
 wrapper' :: String -> IO ()
 wrapper' s = catch (print' (eval s)) handler

@@ -17,14 +17,17 @@ read' = putStr "MP λ> "
      >> hFlush stdout
      >> getLine
 
-eval' :: String -> [String]
+eval' :: String -> IO [String]
 eval' input = eval input
 
-print' :: [String] -> IO ()
-print' = mapM_ putStrLn
+print' :: IO [String] -> IO ()
+print' lst = do
+    res <- lst
+    mapM_ putStrLn res
 
 wrapper' :: String -> String -> IO ()
-wrapper' s path = catch (print' (evalWithStdLib s path)) handler
+wrapper' s path =
+    catch (print' (evalWithStdLib s path)) handler
     where
-        handler :: SomeException -> IO()
+        handler :: SomeException -> IO ()
         handler ex = putStrLn $ "Caught Exception: " ++ show ex

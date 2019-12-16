@@ -86,209 +86,273 @@ main = hspec $ do
 
     describe "Scheme" $ do
         it "evaluates an addition statement" $ do
-            eval "(+ 5 5)" `shouldBe` ["10"]
+            res <- eval "(+ 5 5)"
+            res `shouldBe` ["10"]
 
         it "evaluates an subtraction statement" $ do
-            eval "(- 5 5)" `shouldBe` ["0"]
+            res <- eval "(- 5 5)" 
+            res `shouldBe` ["0"]
 
         it "evaluates a multiplication statement" $ do
-            eval "(* 5 5)" `shouldBe` ["25"]
+            res <- eval "(* 5 5)" 
+            res `shouldBe` ["25"]
 
         it "evaluates a division statement" $ do
-            eval "(/ 10 2)" `shouldBe` ["5"]
+            res <- eval "(/ 10 2)" 
+            res `shouldBe` ["5"]
 
         it "evaluates an if statement - true" $ do
-            eval "(if #t #t #f)" `shouldBe` ["#t"]
+            res <- eval "(if #t #t #f)" 
+            res `shouldBe` ["#t"]
         
         it "evaluates an if statement - false" $ do
-            eval "(if #f #f #t)" `shouldBe` ["#t"]
+            res <- eval "(if #f #f #t)" 
+            res `shouldBe` ["#t"]
 
         it "case-split statement" $ do
-            eval "(define (check-first lst) \
+            res <- eval "(define (check-first lst) \
             \ (case-split \
               \  (first lst) \
                  \   [7 #t] \
                     \[(+ 1 2 3 4) (check-first (rest lst))] \
                     \[else (list 1 2 3 4)]))\
-        \ (check-first [7]) \
-        \ (check-first [10 7]) \
-        \ (check-first [10 2 3]) \
-        \ (check-first [5 5])" `shouldBe` ["#t", "#t", "'(1 2 3 4)", "'(1 2 3 4)"]
+            \ (check-first [7]) \
+            \ (check-first [10 7]) \
+            \ (check-first [10 2 3]) \
+            \ (check-first [5 5])" 
+            res `shouldBe` ["#t", "#t", "'(1 2 3 4)", "'(1 2 3 4)"]
 
         it "factorial" $ do
-            eval "(define (factorial n) (if (= n 0) 1 (* n (factorial (- n 1))))) \
-                    \ (factorial 5) (factorial 6)" `shouldBe` ["120", "720"]
+            res <- eval "(define (factorial n) (if (= n 0) 1 (* n (factorial (- n 1))))) \
+                    \ (factorial 5) (factorial 6)" 
+            res `shouldBe` ["120", "720"]
 
         it "map" $ do
-            eval (stdlib ++ "(map (lambda (a) (+ a 5)) (list 1 2 3 4 5))") `shouldBe` ["'(6 7 8 9 10)"]
+            res <- eval (stdlib ++ "(map (lambda (a) (+ a 5)) (list 1 2 3 4 5))") 
+            res `shouldBe` ["'(6 7 8 9 10)"]
         
         it "filter" $ do
-            eval (stdlib ++ "(filter (lambda (a) (= a 5)) (list 5 2 4 3 5))") `shouldBe` ["'(5 5)"]
+            res <- eval (stdlib ++ "(filter (lambda (a) (= a 5)) (list 5 2 4 3 5))") 
+            res `shouldBe` ["'(5 5)"]
 
         it "Functions without arguments" $ do
-            eval (stdlib ++ "(empty)") `shouldBe` ["'()"]
+            res <- eval (stdlib ++ "(empty)") 
+            res `shouldBe` ["'()"]
 
         it "Functions without arguments lambda" $ do
-            eval ("(lambda () 5)") `shouldBe` ["internal function"]
+            res <- eval ("(lambda () 5)") 
+            res `shouldBe` ["internal function"]
 
         it "Function application without arguments" $ do
-            eval ("((lambda () 5))") `shouldBe` ["5"]
+            res <- eval ("((lambda () 5))") 
+            res `shouldBe` ["5"]
 
         it "cond with multiple cases - else case" $ do
-            eval "(cond [(= 2 3) \"case one\"] \
+            res <- eval "(cond [(= 2 3) \"case one\"] \
                     \   [(= 3 4) \"case two\"] \
-                    \   [else \"else\"])" `shouldBe` ["\"else\""]
+                    \   [else \"else\"])" 
+            res `shouldBe` ["\"else\""]
 
         it "cond with multiple cases - first case" $ do
-            eval "(cond [(= 2 2) \"case one\"] \
+            res <- eval "(cond [(= 2 2) \"case one\"] \
                     \   [(= 3 4) \"case two\"] \
-                    \   [else \"else\"])" `shouldBe` ["\"case one\""]
+                    \   [else \"else\"])" 
+            res `shouldBe` ["\"case one\""]
 
         it "cond with multiple cases - first case" $ do
-            eval "(cond [(= 2 3) \"case one\"] \
+            res <- eval "(cond [(= 2 3) \"case one\"] \
                     \   [(= 3 3) \"case two\"] \
-                    \   [else \"else\"])" `shouldBe` ["\"case two\""]
+                    \   [else \"else\"])" 
+            res `shouldBe` ["\"case two\""]
 
         it "list with tick notation" $ do
-            eval "'(1 2 3 4)" `shouldBe` ["'(1 2 3 4)"]
+            res <- eval "'(1 2 3 4)" 
+            res `shouldBe` ["'(1 2 3 4)"]
 
         it "list with list notation" $ do
-            eval "(list 1 2 3 4)" `shouldBe` ["'(1 2 3 4)"]
+            res <- eval "(list 1 2 3 4)" 
+            res `shouldBe` ["'(1 2 3 4)"]
 
         it "list with bracket notation" $ do
-            eval "[1 2 3 4]" `shouldBe` ["'(1 2 3 4)"]
+            res <- eval "[1 2 3 4]" 
+            res `shouldBe` ["'(1 2 3 4)"]
 
         it "Addition with multiple arguments" $ do
-            eval "(+ 1 2 3 4 5)" `shouldBe` ["15"]
+            res <- eval "(+ 1 2 3 4 5)" 
+            res `shouldBe` ["15"]
 
         it "Subtraction with multiple arguments" $ do
-            eval "(- 10 5 3 2)" `shouldBe` ["0"]
+            res <- eval "(- 10 5 3 2)" 
+            res `shouldBe` ["0"]
 
         it "Multiplication with multiple arguments" $ do
-            eval "(* 1 2 3 4 5)" `shouldBe` ["120"]
+            res <- eval "(* 1 2 3 4 5)" 
+            res `shouldBe` ["120"]
 
         it "Division with multiple arguments, odd" $ do
-            eval "(/ 100 10 5)" `shouldBe` ["2"]
+            res <- eval "(/ 100 10 5)" 
+            res `shouldBe` ["2"]
 
         it "Division with multiple arguments, even" $ do
-            eval "(/ 1000 10 10 5)" `shouldBe` ["2"]
+            res <- eval "(/ 1000 10 10 5)" 
+            res `shouldBe` ["2"]
 
         it "AND with multiple arguments" $ do
-            eval "(and #t #t #t #t)" `shouldBe` ["#t"]
+            res <- eval "(and #t #t #t #t)" 
+            res `shouldBe` ["#t"]
 
         it "AND with muliple arguments, different notations" $ do
-            eval "(and #t #t #true #t)" `shouldBe` ["#t"]
+            res <- eval "(and #t #t #true #t)" 
+            res `shouldBe` ["#t"]
 
         it "AND with muliple arguments, different notations, odd numbered arguments" $ do
-            eval "(and #t #t #t)" `shouldBe` ["#t"]
+            res <- eval "(and #t #t #t)" 
+            res `shouldBe` ["#t"]
 
         it "AND with multiple arguments" $ do
-            eval "(and #t #t #false #t)" `shouldBe` ["#f"]
+            res <- eval "(and #t #t #false #t)" 
+            res `shouldBe` ["#f"]
 
         it "OR with multiple arguments" $ do
-            eval "(or #t #f #t)" `shouldBe` ["#t"]
+            res <- eval "(or #t #f #t)" 
+            res `shouldBe` ["#t"]
 
         it "OR with multiple arguments" $ do
-            eval "(or #f #f #f #f)" `shouldBe` ["#f"]
+            res <- eval "(or #f #f #f #f)" 
+            res `shouldBe` ["#f"]
 
         it "< with 2 arguments, true" $ do
-            eval "(< 10 1000)" `shouldBe` ["#t"]
+            res <- eval "(< 10 1000)" 
+            res `shouldBe` ["#t"]
 
         it "< with 2 arguments, false" $ do
-            eval "(< 1000 10)" `shouldBe` ["#f"]
+            res <- eval "(< 1000 10)" 
+            res `shouldBe` ["#f"]
 
         it "< with multiple arguments, 5, true" $ do
-            eval "(< 0 1 2 3 4)" `shouldBe` ["#t"]
+            res <- eval "(< 0 1 2 3 4)" 
+            res `shouldBe` ["#t"]
 
         it "< with multiple arguments, 4, true" $ do
-            eval "(< 0 1 2 4)" `shouldBe` ["#t"]
+            res <- eval "(< 0 1 2 4)" 
+            res `shouldBe` ["#t"]
 
         it "< with multiple arguments, 3, false" $ do
-            eval "(< 1 10 2)" `shouldBe` ["#f"]
+            res <- eval "(< 1 10 2)" 
+            res `shouldBe` ["#f"]
 
         it "< with multiple arguments, 4, false" $ do
-            eval "(< 100 0 1)" `shouldBe` ["#f"]
+            res <- eval "(< 100 0 1)" 
+            res `shouldBe` ["#f"]
 
         it "> with 2 arguments, false" $ do
-            eval "(> 10 1000)" `shouldBe` ["#f"]
+            res <- eval "(> 10 1000)" 
+            res `shouldBe` ["#f"]
 
         it "> with 2 arguments, true" $ do
-            eval "(> 1000 10)" `shouldBe` ["#t"]
+            res <- eval "(> 1000 10)" 
+            res `shouldBe` ["#t"]
 
         it "> with multiple arguments, 5, false" $ do
-            eval "(> 0 1 2 3 4)" `shouldBe` ["#f"]
+            res <- eval "(> 0 1 2 3 4)" 
+            res `shouldBe` ["#f"]
 
         it "> with multiple arguments, 4, false" $ do
-            eval "(> 0 1 2 4)" `shouldBe` ["#f"]
+            res <- eval "(> 0 1 2 4)" 
+            res `shouldBe` ["#f"]
 
         it "> with multiple arguments, 3, true" $ do
-            eval "(> 100 10 2)" `shouldBe` ["#t"]
+            res <- eval "(> 100 10 2)" 
+            res `shouldBe` ["#t"]
 
         it "> with multiple arguments, 4, true" $ do
-            eval "(> 100 2 1)" `shouldBe` ["#t"]
+            res <- eval "(> 100 2 1)" 
+            res `shouldBe` ["#t"]
 
         it "<= with 2 arguments, true" $ do
-            eval "(<= 10 1000)" `shouldBe` ["#t"]
+            res <- eval "(<= 10 1000)" 
+            res `shouldBe` ["#t"]
 
         it "<= with 2 arguments, true, equal" $ do
-            eval "(<= 10 10)" `shouldBe` ["#t"]
+            res <- eval "(<= 10 10)" 
+            res `shouldBe` ["#t"]
 
         it "<= with 2 arguments, false" $ do
-            eval "(<= 1000 10)" `shouldBe` ["#f"]
+            res <- eval "(<= 1000 10)" 
+            res `shouldBe` ["#f"]
 
         it "<= with multiple arguments, 5, true" $ do
-            eval "(<= 0 1 2 3 4)" `shouldBe` ["#t"]
+            res <- eval "(<= 0 1 2 3 4)" 
+            res `shouldBe` ["#t"]
 
         it "<= with multiple arguments, 4, true" $ do
-            eval "(<= 0 1 2 4)" `shouldBe` ["#t"]
+            res <- eval "(<= 0 1 2 4)" 
+            res `shouldBe` ["#t"]
 
         it "<= with multiple arguments, 3, false" $ do
-            eval "(<= 1 10 2)" `shouldBe` ["#f"]
+            res <- eval "(<= 1 10 2)" 
+            res `shouldBe` ["#f"]
 
         it "<= with multiple arguments, 4, false" $ do
-            eval "(<= 100 0 1 3)" `shouldBe` ["#f"]
+            res <- eval "(<= 100 0 1 3)" 
+            res `shouldBe` ["#f"]
 
         it ">= with 2 arguments, true" $ do
-            eval "(>= 1000 10)" `shouldBe` ["#t"]
+            res <- eval "(>= 1000 10)" 
+            res `shouldBe` ["#t"]
 
         it ">= with 2 arguments, true, equal" $ do
-            eval "(>= 10 10)" `shouldBe` ["#t"]
+            res <- eval "(>= 10 10)" 
+            res `shouldBe` ["#t"]
 
         it ">= with 2 arguments, true" $ do
-            eval "(>= 1000 10)" `shouldBe` ["#t"]
+            res <- eval "(>= 1000 10)" 
+            res `shouldBe` ["#t"]
 
         it ">= with multiple arguments, 5, false" $ do
-            eval "(>= 0 1 2 3 4)" `shouldBe` ["#f"]
+            res <- eval "(>= 0 1 2 3 4)" 
+            res `shouldBe` ["#f"]
 
         it ">= with multiple arguments, 4, false" $ do
-            eval "(>= 0 1 2 4)" `shouldBe` ["#f"]
+            res <- eval "(>= 0 1 2 4)" 
+            res `shouldBe` ["#f"]
 
         it ">= with multiple arguments, 3, true" $ do
-            eval "(>= 100 10 2)" `shouldBe` ["#t"]
+            res <- eval "(>= 100 10 2)" 
+            res `shouldBe` ["#t"]
 
         it ">= with multiple arguments, 4, true" $ do
-            eval "(>= 100 10 1 0)" `shouldBe` ["#t"]
+            res <- eval "(>= 100 10 1 0)" 
+            res `shouldBe` ["#t"]
 
         it "= with multiple arguments, 3, true" $ do
-            eval "(= 3 3 3)" `shouldBe` ["#t"]
+            res <- eval "(= 3 3 3)" 
+            res `shouldBe` ["#t"]
             
         it "= with multiple arguments, 4, true" $ do
-            eval "(= 3 3 3 3)" `shouldBe` ["#t"]
+            res <- eval "(= 3 3 3 3)" 
+            res `shouldBe` ["#t"]
 
         it "= with multiple arguments, 3, false" $ do
-            eval "(= 3 3 4)" `shouldBe` ["#f"]
+            res <- eval "(= 3 3 4)" 
+            res `shouldBe` ["#f"]
 
         it "= with multiple arguments, 4, false" $ do
-            eval "(= 3 3 3 4)" `shouldBe` ["#f"]
+            res <- eval "(= 3 3 3 4)" 
+            res `shouldBe` ["#f"]
 
         it "first" $ do
-            eval "(first '(1 2 3 4))" `shouldBe` ["1"]
+            res <- eval "(first '(1 2 3 4))" 
+            res `shouldBe` ["1"]
         
         it "rest" $ do
-            eval "(rest '(1 2 3 4))" `shouldBe` ["'(2 3 4)"]
+            res <- eval "(rest '(1 2 3 4))" 
+            res `shouldBe` ["'(2 3 4)"]
 
         it "cons" $ do
-            eval "(cons 1 '(2 3 4))" `shouldBe` ["'(1 2 3 4)"]
+            res <- eval "(cons 1 '(2 3 4))" 
+            res `shouldBe` ["'(1 2 3 4)"]
 
         it "append" $ do
-            eval "(append [1 2] [3 4])" `shouldBe` ["'(1 2 3 4)"]
+            res <- eval "(append [1 2] [3 4])" 
+            res `shouldBe` ["'(1 2 3 4)"]
