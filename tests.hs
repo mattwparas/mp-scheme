@@ -135,6 +135,14 @@ main = hspec $ do
             res <- eval (stdlib ++ "(filter (lambda (a) (= a 5)) (list 5 2 4 3 5))") 
             res `shouldBe` ["'(5 5)"]
 
+        it "Anonymous function application" $ do
+            res <- eval "((λ (a) (+ a 5)) 10)"
+            res `shouldBe` ["15"]
+
+        it "Anonymous function definition" $ do
+            res <- eval "(λ (a) (+ a 5))"
+            res `shouldBe` ["internal function"]
+
         it "Functions without arguments" $ do
             res <- eval (stdlib ++ "(empty)") 
             res `shouldBe` ["'()"]
@@ -371,7 +379,7 @@ main = hspec $ do
             res <- eval statement
             res `shouldBe` ["\"hello\""]
 
-        it "string->list , list->string is deterministic" $ do
+        it "string->list, list->string is deterministic" $ do
             let statement = "(list->string (string->list \"hello\"))"
             res <- eval statement
             res `shouldBe` ["\"hello\""]

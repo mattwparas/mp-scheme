@@ -308,6 +308,7 @@ switchSymbol "case-split" lv = caseHelper lv
 
 switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
 switchSymbol "lambda" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv))) -- change to accept multiple arguments
+switchSymbol "λ" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv)))
 switchSymbol "with" lv = withHelper lv
 switchSymbol "list" lv = (ListW (map parser lv))
 switchSymbol "first" lv = (FirstW (parser (head lv)))
@@ -335,8 +336,9 @@ unWrapBracket :: LispVal -> [LispVal]
 unWrapBracket (ListVal l) = l
 unWrapBracket e = error ("unwrapping a bracketed value threw an error: " ++ (show e))
 
-parser :: LispVal -> WExpr
-parser (Symbol s) = 
+
+parseSymbol :: String -> WExpr
+parseSymbol s =     
     if isInteger s
         then (NumbW (read s::Integer))
         else if (isBoolean s)
@@ -344,6 +346,9 @@ parser (Symbol s) =
             else if (isChar s)
                 then (CharW (last s))
                 else (SymW s)
+
+parser :: LispVal -> WExpr
+parser (Symbol s) = parseSymbol s
 parser (StringVal s) = (StringW s)
 parser (List []) = error "Empty expression"
 parser (List ((List x):xs)) = appHelper ((List x):xs)
@@ -674,7 +679,6 @@ interp (ListToString lst) funDefs ds = do
     res <- (interp lst funDefs ds)
     let intlst = listOpV res
     return (StringV (map charOp intlst))
-    
 
 interp (ListE vals) funDefs ds = do
     res <- (mapM (\x -> (interp x funDefs ds)) vals)
@@ -727,11 +731,14 @@ interpWrap s funDefs = interp s funDefs (MtSub)
 multipleInterp :: [Expr] -> [GlobalFunDef] -> Eval [ExprValue]
 multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
 
+charFormatting :: Char -> String
+charFormatting ' ' = "space"
+charFormatting c = [c]
 
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
 interpVal (BoolV b) = boolToString b
-interpVal (CharV c) = "#/" ++ [c]
+interpVal (CharV c) = "#/" ++ (charFormatting c)
 interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"
 interpVal (StringV s) = "\"" ++ s ++ "\""
 interpVal (ClosureV _ _ _) = "internal function"
@@ -755,7 +762,7 @@ evalWithStdLib :: String -> String -> IO [String]
 evalWithStdLib expr file = do
     let res = 
             (multipleInterp 
-            (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
+            (compileMap (parserWrapper (getAllExprs (lexer expr))))
             ((getFunDefs file) ++ (getFunDefs expr)))
     (runReaderT (unEval (multipleInterpValL res)) (StringW ""))
 
