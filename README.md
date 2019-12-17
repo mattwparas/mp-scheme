@@ -7,6 +7,7 @@
 Types supported:
 
 * `Integers`
+* `Doubles`
 * `Booleans`
 * `Strings`
 * `Lists`
