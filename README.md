@@ -11,6 +11,7 @@ Types supported:
 * `Strings`
 * `Lists`
 * `Closures`
+* `Chars`
 
 Features:
 
@@ -44,6 +45,8 @@ Features:
     * `lambda` with n arguments
     * `cons`
     * `append`
+    * `first`
+    * `rest`
     
 See the standard library `stdlib.scm` for details.
     
