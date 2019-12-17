@@ -7,6 +7,8 @@
 (factorial 5)
 (factorial 100)
 
+'c'
+
 
 (list "Hello" "my" "name" "is" "matt")
 

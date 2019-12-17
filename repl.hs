@@ -13,7 +13,7 @@ main = do
         >> main
 
 read' :: IO String
-read' = putStr "MP λ> "
+read' = putStr "Kaye-λ> "
      >> hFlush stdout
      >> getLine
 

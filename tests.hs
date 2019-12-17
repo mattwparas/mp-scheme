@@ -360,3 +360,18 @@ main = hspec $ do
         it "empty stdlib" $ do
             res <- eval (stdlib ++ "(empty)")
             res `shouldBe` ["'()"]
+
+        it "string to list" $ do
+            let statement = "(string->list \"hello\")"
+            res <- eval statement
+            res `shouldBe` ["'(#/h #/e #/l #/l #/o)"]
+
+        it "list to string" $ do
+            let statement = "(list->string '(#/h #/e #/l #/l #/o))"
+            res <- eval statement
+            res `shouldBe` ["\"hello\""]
+
+        it "string->list , list->string is deterministic" $ do
+            let statement = "(list->string (string->list \"hello\"))"
+            res <- eval statement
+            res `shouldBe` ["\"hello\""]

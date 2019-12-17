@@ -16,13 +16,13 @@ import Text.Parsec
        ((<|>), (<?>), many, many1, char, try, parse, sepBy, choice,
         between)
 import Text.Parsec.Token
-       (integer, float, whiteSpace, stringLiteral, makeTokenParser)
+       (integer, float, whiteSpace, stringLiteral, makeTokenParser, charLiteral)
 import Text.Parsec.Char (noneOf)
 import Text.Parsec.Language (haskell)
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
-import Control.Exception hiding (handle)
+import Control.Exception hiding (handle, try)
 
 -- import Data.Monoid
 import System.Directory
@@ -32,7 +32,7 @@ import Control.Monad.Reader
 -- import Network
 
 import Data.Text.IO as TIO
-import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter)
+import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
 
 -- import Network.HTTP
 
@@ -93,11 +93,15 @@ isDouble s = case reads s :: [(Double, String)] of
 isNumeric :: String -> Bool
 isNumeric s = isInteger s || isDouble s
 
+isChar :: String -> Bool
+isChar s = (take 2 s) == "#/"
+
 type Symbol = String
 type Number = Integer
 
 data WExpr =
     NumbW Integer
+    | CharW Char
     | BooleanW String
     | StringW String
     | SymW [Char]
@@ -127,10 +131,13 @@ data WExpr =
     | CaseW WExpr [(WExpr, WExpr)] WExpr
     | SlurpW WExpr
     | SpitW WExpr WExpr
+    | StringToListW WExpr
+    | ListToStringW WExpr
     deriving (Eq, Show)
 
 data Expr = 
     Numb Integer
+    | CharE Char
     | StringE String
     | Boolean String
     | Sym [Char]
@@ -161,6 +168,8 @@ data Expr =
     | Case Expr [(Expr, Expr)] Expr
     | Slurp Expr
     | Spit Expr Expr
+    | StringToList Expr
+    | ListToString Expr
     deriving (Eq, Show)
 
 
@@ -221,6 +230,7 @@ data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
 data ExprValue =
     NumV Integer
+    | CharV Char
     | BoolV Bool
     | ClosureV String Expr DefSub
     | ListV [ExprValue]
@@ -310,6 +320,8 @@ switchSymbol "not" lv = (NotW (parser (head lv)))
 switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
 switchSymbol "slurp!" lv = (SlurpW (parser (head lv)))
 switchSymbol "spit!" lv = (SpitW (parser (head lv)) (parser (last lv)))
+switchSymbol "string->list" lv = (StringToListW (parser (head lv)))
+switchSymbol "list->string" lv = (ListToStringW (parser (head lv)))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 
@@ -329,7 +341,9 @@ parser (Symbol s) =
         then (NumbW (read s::Integer))
         else if (isBoolean s)
             then (BooleanW s)
-            else (SymW s)
+            else if (isChar s)
+                then (CharW (last s))
+                else (SymW s)
 parser (StringVal s) = (StringW s)
 parser (List []) = error "Empty expression"
 parser (List ((List x):xs)) = appHelper ((List x):xs)
@@ -380,6 +394,7 @@ compFoldOptimization fnW fn args =
 
 compile :: WExpr -> Expr
 compile (NumbW n) = Numb n
+compile (CharW c) = CharE c
 compile (BooleanW b) = Boolean b
 compile (SymW s) = Sym s
 compile (StringW s) = StringE s
@@ -399,6 +414,8 @@ compile (CondW tst thn els) = (Cond (compile tst) (compile thn) (compile els))
 compile (WithW name namedExpr body) = (App (Fun [name] (compile body)) [(compile namedExpr)])
 compile (SlurpW path) = (Slurp (compile path))
 compile (SpitW path val) = (Spit (compile path) (compile val))
+compile (StringToListW str) = (StringToList (compile str))
+compile (ListToStringW lst) = (ListToString (compile lst))
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
@@ -511,7 +528,6 @@ defSubHelper (x:xs) funDefs (b:bs) ds =
         defs <- (defSubHelper xs funDefs bs ds)
         return (ASub x res defs)
 
-
 checkNumber :: ExprValue -> Number
 checkNumber (NumV n) = n
 checkNumber e = error ("comparator not supported for non numbers: " ++ (show e))
@@ -523,12 +539,6 @@ listOpV e = error ("List operation applied to non list: " ++ (show e))
 boolToString :: Bool -> String
 boolToString True = "#t"
 boolToString False = "#f"
-
--- extractValue :: ExprValue -> Expr
--- extractValue (ListV lst) = (ListE (map extractValue lst))
--- extractValue (NumV n) = (Numb n)
--- extractValue (BoolV b) = (Boolean (boolToString b))
--- extractValue (ClosureV paramName body ds) = (Fun paramName body)
 
 boolOp :: ExprValue -> Bool
 boolOp (BoolV b) = b
@@ -542,54 +552,30 @@ stringToExpr :: ExprValue -> Eval Expr
 stringToExpr (StringV s) = return (StringE s)
 stringToExpr e = error ("String operation applied to non string: " ++ (show e))
 
--- testInterp :: (Eval Expr) -> [GlobalFunDef] -> DefSub -> ExprValue
--- testInterp (Eval (StringE s)) _ _ = StringV s
+listOpE :: Expr -> [Expr]
+listOpE (ListE lst) = lst
+listOpE e = error ("List operation applied to non list: " ++ (show e))
 
--- data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
---     deriving (Typeable)
-
--- mkF :: ([LispVal] -> Eval LispVal) -> LispVal
--- mkF = Fun . IFunc
-
--- interpEval :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
--- interpEval (Slurp s) funDefs ds = interpExpr 
-
--- interpEval expr funDefs ds = return (interp expr funDefs ds)
-
--- interpExpr :: Expr -> [GlobalFunDef] -> DefSub -> Eval Expr
--- interpExpr (Slurp s) funDefs ds = stringToExpr (interp (Slurp s) funDefs ds)
-
-
-    -- do
-    --     let res = stringToExpr >=> (interp s funDefs ds)
-    --     interp res funDefs ds
-
-
-
--- interpSlurp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
--- interpSlurp expr funDefs ds = return (interp expr funDefs ds)
+charOp :: ExprValue -> Char
+charOp (CharV c) = c
+charOp e = error ("Char operation applied to non char: " ++ (show e))
 
 -- TODO come back here
 interp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
 interp (Numb n) _ _ = return (NumV n)
 interp (Boolean b) _ _ = return (BoolV (matchStrToBool b))
+interp (CharE c) _ _ = return (CharV c)
 interp (Sym s) funDefs ds = do 
     res <- (lookupDS (Symbol s) funDefs ds)
     return res
 
 interp (StringE s) _ _ = return (StringV s)
--- interp (Slurp s) funDefs ds = 
---     do
---         (interpEval (Slurp s) funDefs ds)
-
 
 interp (Add lhs rhs) funDefs ds = do
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
     return (numOpAdd l r)
 
-    -- res <- numOpAdd (interp lhs funDefs ds) (interp rhs funDefs ds)
-    -- return res
 interp (Sub lhs rhs) funDefs ds = do
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
@@ -630,10 +616,6 @@ interp (GtE lhs rhs) funDefs ds = do
     r <- interp rhs funDefs ds
     return (BoolV ((checkNumber l) >= (checkNumber r)))
 
-    -- BoolV ((checkNumber (interp lhs funDefs ds)) < (checkNumber (interp rhs funDefs ds)))
--- interp (Gt lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) > (checkNumber (interp rhs funDefs ds)))
--- interp (LtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) <= (checkNumber (interp rhs funDefs ds)))
--- interp (GtE lhs rhs) funDefs ds = BoolV ((checkNumber (interp lhs funDefs ds)) >= (checkNumber (interp rhs funDefs ds)))
 interp (App funExpr (argExpr:xs)) funDefs ds = do
     fn <- (interp funExpr funDefs ds)
     ag <- (interp argExpr funDefs ds)
@@ -656,7 +638,6 @@ interp (Cond test thn els) funDefs ds = -- expand to any number of conditions
             else (interp els funDefs ds)
 
 interp (CondT tests els) funDefs ds =
-    -- tst <- (interp (fst (head tests)) funDefs ds)
     if tests == []
         then (interp els funDefs ds)
         else do
@@ -684,25 +665,29 @@ interp (Spit path res) funDefs ds = do
     msg <- (interp res funDefs ds)
     (put filePath msg)
 
+interp (StringToList str) funDefs ds = do
+    res <- (interp str funDefs ds)
+    let intstr = stringOp res
+    return (ListV (map (\x -> (CharV x)) intstr))
+
+interp (ListToString lst) funDefs ds = do
+    res <- (interp lst funDefs ds)
+    let intlst = listOpV res
+    return (StringV (map charOp intlst))
+    
+
 interp (ListE vals) funDefs ds = do
     res <- (mapM (\x -> (interp x funDefs ds)) vals)
     return (ListV res)
 
-    -- return (ListV (mapM (map (\x -> (interp x funDefs ds)) vals)))
-
-
-
-interp (First lst) funDefs ds = do 
+interp (First lst) funDefs ds = do
     res <- (interp lst funDefs ds)
     return (head (listOpV res))
-    
-    -- (head (listOpV (interp lst funDefs ds)))-- need to split on the exprvalue cases for the result
--- interp (First lst) funDefs ds = (interp (head (listOpV lst)) funDefs ds)
+
 interp (Rest lst) funDefs ds = do
     res <- (interp lst funDefs ds)
     return (ListV (tail (listOpV res)))
-    
-    -- (ListV (tail (listOpV (interp lst funDefs ds))))
+
 interp (Cons l r) funDefs ds = do
     hd <- (interp l funDefs ds)
     tl <- (interp r funDefs ds)
@@ -724,9 +709,7 @@ interp (And lhs rhs) funDefs ds =  do -- TODO check if this is actually a necess
     if l == (BoolV True)
         then (interp rhs funDefs ds)
         else return (BoolV False)
-        -- else if (interp rhs funDefs ds) == (BoolV True)
-        --     then (BoolV True)
-        --     else (BoolV False)
+
 interp (Or lhs rhs) funDefs ds = do
     l <- (interp lhs funDefs ds)
     if l == (BoolV True)
@@ -748,6 +731,7 @@ multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
 interpVal (BoolV b) = boolToString b
+interpVal (CharV c) = "#/" ++ [c]
 interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"
 interpVal (StringV s) = "\"" ++ s ++ "\""
 interpVal (ClosureV _ _ _) = "internal function"
@@ -759,24 +743,6 @@ multipleInterpVal evs = (map interpVal evs)
 multipleInterpValL :: Eval [ExprValue] -> Eval [String]
 multipleInterpValL = liftM multipleInterpVal
 
-
-{-
-Somehow, inject the string from the path 
-into the file in some capacity at run time
-(ideally, lazily in some way but idk if I can pull that off)
--}
--- slurp :: ExprValue -> IO String
--- slurp (StringV s) = readFile s
--- slurp e = error ("Not a valid path" ++ (show e))
-
-
-
--- eval :: String -> [String]
--- eval expr =
---     (multipleInterpVal 
---     (multipleInterp
---     (compileMap (parserWrapper (getAllExprs (lexer expr)))) 
---     (getFunDefs expr)))
 
 eval :: String -> IO [String]
 eval expr = do
@@ -793,52 +759,46 @@ evalWithStdLib expr file = do
             ((getFunDefs file) ++ (getFunDefs expr)))
     (runReaderT (unEval (multipleInterpValL res)) (StringW ""))
 
--- evalWithStdLib :: String -> String -> [String]
--- evalWithStdLib expr file =
---     (multipleInterpVal
---     (multipleInterp
---     (compileMap (parserWrapper (getAllExprs (lexer expr))))
---     ((getFunDefs file) ++ (getFunDefs expr))))
-
-
 
 -- main :: IO ()
 -- main = do
 
---     -- let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
+    -- let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
 
---     -- let expr = "(#import stdlib.scm) (#import helpers.scm)"
+    -- let expr = "(#import stdlib.scm) (#import helpers.scm)"
 
---     -- let expr = "\"hello\""
+    -- let expr = "\"hello\""
 
---     -- let expr = "(slurp \"fac.scm\")"
+    -- let expr = "(slurp \"fac.scm\")"
 
---     -- -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+    -- -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
 
---     -- test1 <- eval expr
+    -- test1 <- eval expr
 
---     -- print (test1)
+    -- print (test1)
 
---     -- let expr2 = (StringV "fac.scm")
+    -- let expr2 = (StringV "fac.scm")
 
---     -- let res2 = (slurp expr2)
+    -- let res2 = (slurp expr2)
 
---     -- print (res)
+    -- print (res)
 
---     -- let undo = runReaderT (unEval res) (StringW "")
+    -- let undo = runReaderT (unEval res) (StringW "")
 
---     -- print (undo)
+    -- print (undo)
 
---     -- unEval res
+    -- unEval res
 
---     -- test <- runReaderT (unEval res2) (StringW "")
+    -- test <- runReaderT (unEval res2) (StringW "")
 
---     -- print (test)
---     let expr = "(lambda () (+ 5 5))"
---     let expr2 = "((lambda () (+ 5 5)))"
+    -- print (test)
+    -- let expr = "#/c"
 
---     print (parserWrapper (getAllExprs (lexer expr)))
---     print (parserWrapper (getAllExprs (lexer expr2)))
+    -- test <- (eval expr)
+    -- print test
+
+    -- print (parserWrapper (getAllExprs (lexer expr)))
+    -- print (parserWrapper (getAllExprs (lexer expr2)))
 
 
 
