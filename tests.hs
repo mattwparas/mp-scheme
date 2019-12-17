@@ -383,3 +383,8 @@ main = hspec $ do
             let statement = "(list->string (string->list \"hello\"))"
             res <- eval statement
             res `shouldBe` ["\"hello\""]
+
+        it "space character" $ do
+            let statement = "#/ "
+            res <- eval statement
+            res `shouldBe` ["#/space"]

@@ -336,6 +336,9 @@ unWrapBracket :: LispVal -> [LispVal]
 unWrapBracket (ListVal l) = l
 unWrapBracket e = error ("unwrapping a bracketed value threw an error: " ++ (show e))
 
+formatChar :: String -> Char
+formatChar "#/" = ' '
+formatChar s = (last s)
 
 parseSymbol :: String -> WExpr
 parseSymbol s =     
@@ -344,7 +347,7 @@ parseSymbol s =
         else if (isBoolean s)
             then (BooleanW s)
             else if (isChar s)
-                then (CharW (last s))
+                then (CharW (formatChar s))
                 else (SymW s)
 
 parser :: LispVal -> WExpr
@@ -770,19 +773,23 @@ evalWithStdLib expr file = do
 -- main :: IO ()
 -- main = do
 
-    -- let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
+--     -- let expr = "(cond [(= 1 1) '(1 2 3 4)] [(= 3 4) (list 4 5 6)] [else (list 7 8 9)])"
 
-    -- let expr = "(#import stdlib.scm) (#import helpers.scm)"
+--     -- let expr = "(#import stdlib.scm) (#import helpers.scm)"
 
-    -- let expr = "\"hello\""
+--     -- let expr = "\"hello\""
 
-    -- let expr = "(slurp \"fac.scm\")"
+--     -- let expr = "(slurp \"fac.scm\")"
 
-    -- -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+--     let expr = "#/ "
 
-    -- test1 <- eval expr
+--     print (lexer expr)
 
-    -- print (test1)
+--     -- let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
+
+--     test1 <- eval expr
+
+--     print (test1)
 
     -- let expr2 = (StringV "fac.scm")
 
