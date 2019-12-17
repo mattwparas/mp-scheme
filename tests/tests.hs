@@ -2,7 +2,14 @@ import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
 
-import Scheme
+import Interpreter
+
+{-
+
+
+runhaskell -i/Users/mwparas/Documents/schemefun/mp-scheme/src tests.hs
+
+-}
 
 main :: IO ()
 main = hspec $ do

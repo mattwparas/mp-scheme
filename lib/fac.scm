@@ -1,5 +1,5 @@
 (define (factorial n)
-  (cond (= n 0)
+  (if (= n 0)
       1
       (* n (factorial (- n 1)))))
 
@@ -7,7 +7,6 @@
 (factorial 5)
 (factorial 100)
 
-'c'
 
 
 (list "Hello" "my" "name" "is" "matt")
@@ -24,3 +23,11 @@
 (fib 15)
 
 (factorial 5)
+
+
+(define (sum2 n acc)
+  (if (= n 0)
+      acc
+      (sum2 (- n 1) (+ n acc))))
+
+(sum2 1000000 0)

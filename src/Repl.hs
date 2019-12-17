@@ -1,12 +1,12 @@
 import           Control.Monad     (unless)
 import           System.IO
-import Scheme
+import Interpreter
 import Control.Exception
 
 main :: IO ()
 main = do
     input <- read'
-    stdlib <- (readFile "stdlib.scm")
+    stdlib <- (readFile "../stdlib.scm")
     unless (input == ":quit")
         $ (wrapper' input stdlib)
         -- $ print' (eval' input)
