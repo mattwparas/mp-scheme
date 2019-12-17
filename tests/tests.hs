@@ -395,3 +395,68 @@ main = hspec $ do
             let statement = "#/ "
             res <- eval statement
             res `shouldBe` ["#/space"]
+
+        it "Double" $ do
+            let statement = "10.0"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+
+        it "Double addition, left double" $ do
+            let statement = "(+ 10.0 10)"
+            res <- eval statement
+            res `shouldBe` ["20.0"]
+
+        it "Double addition, right double" $ do
+            let statement = "(+ 10 10.0)"
+            res <- eval statement
+            res `shouldBe` ["20.0"]
+
+        it "Double addition, both double" $ do
+            let statement = "(+ 10.0 10.0)"
+            res <- eval statement
+            res `shouldBe` ["20.0"]
+
+        it "Double subtraction, left double" $ do
+            let statement = "(- 20.0 10)"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+
+        it "Double subtraction, right double" $ do
+            let statement = "(- 20 10.0)"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+        
+        it "Double subtraction, both double" $ do
+            let statement = "(- 20.0 5.0)"
+            res <- eval statement
+            res `shouldBe` ["15.0"]
+
+        it "Double multiplication, left double" $ do
+            let statement = "(* 2.0 5)"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+
+        it "Double multiplication, right double" $ do
+            let statement = "(* 5 2.0)"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+        
+        it "Double multiplication, both double" $ do
+            let statement = "(* 5.0 2.0)"
+            res <- eval statement
+            res `shouldBe` ["10.0"]
+
+        it "Double division, left double" $ do
+            let statement = "(/ 10.0 5)"
+            res <- eval statement
+            res `shouldBe` ["2.0"]
+
+        it "Double division, right double" $ do
+            let statement = "(/ 10 2.0)"
+            res <- eval statement
+            res `shouldBe` ["5.0"]
+        
+        it "Double division, both double" $ do
+            let statement = "(/ 10.0 2.0)"
+            res <- eval statement
+            res `shouldBe` ["5.0"]

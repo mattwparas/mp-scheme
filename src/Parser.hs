@@ -148,11 +148,13 @@ parseSymbol :: String -> WExpr
 parseSymbol s =     
     if isInteger s
         then (NumbW (read s::Integer))
-        else if (isBoolean s)
-            then (BooleanW s)
-            else if (isChar s)
-                then (CharW (formatChar s))
-                else (SymW s)
+        else if isDouble s
+            then (DoubW (read s::Double))
+            else if (isBoolean s)
+                then (BooleanW s)
+                else if (isChar s)
+                    then (CharW (formatChar s))
+                    else (SymW s)
 
 parser :: LispVal -> WExpr
 parser (Symbol s) = parseSymbol s

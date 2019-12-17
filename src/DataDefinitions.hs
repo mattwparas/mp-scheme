@@ -49,6 +49,7 @@ type Number = Integer
 
 data WExpr =
     NumbW Integer
+    | DoubW Double
     | CharW Char
     | BooleanW String
     | StringW String
@@ -85,6 +86,7 @@ data WExpr =
       
 data Expr = 
     Numb Integer
+    | Doub Double
     | CharE Char
     | StringE String
     | Boolean String
@@ -133,6 +135,7 @@ data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
 data ExprValue =
     NumV Integer
+    | DoubV Double
     | CharV Char
     | BoolV Bool
     | ClosureV String Expr DefSub

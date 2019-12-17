@@ -107,19 +107,31 @@ lookupFundefs s ((FundefG funName closure):xs) =
 
 numOpAdd :: ExprValue -> ExprValue -> ExprValue
 numOpAdd (NumV l) (NumV r) = (NumV (l + r))
+numOpAdd (DoubV l) (DoubV r) = (DoubV (l + r))
+numOpAdd (NumV l) (DoubV r) = (DoubV ((fromIntegral l) + r))
+numOpAdd (DoubV l) (NumV r) = (DoubV (l + (fromIntegral r)))
 numOpAdd _ _ = (error "Wrong value given to addition")
 
 numOpSub :: ExprValue -> ExprValue -> ExprValue
 numOpSub (NumV l) (NumV r) = (NumV (l - r))
-numOpSub _ _ = (error "Wrong value given to addition")
+numOpSub (DoubV l) (DoubV r) = (DoubV (l - r))
+numOpSub (NumV l) (DoubV r) = (DoubV ((fromIntegral l) - r))
+numOpSub (DoubV l) (NumV r) = (DoubV (l - (fromIntegral r)))
+numOpSub _ _ = (error "Wrong value given to subtraction")
 
 numOpMult :: ExprValue -> ExprValue -> ExprValue
 numOpMult (NumV l) (NumV r) = (NumV (l * r))
-numOpMult _ _ = (error "Wrong value given to addition")
+numOpMult (DoubV l) (DoubV r) = (DoubV (l * r))
+numOpMult (NumV l) (DoubV r) = (DoubV ((fromIntegral l) * r))
+numOpMult (DoubV l) (NumV r) = (DoubV (l * (fromIntegral r)))
+numOpMult _ _ = (error "Wrong value given to multiplication")
 
 numOpDiv :: ExprValue -> ExprValue -> ExprValue
 numOpDiv (NumV l) (NumV r) = (NumV (l `div` r))
-numOpDiv _ _ = (error "Wrong value given to addition")
+numOpDiv (DoubV l) (DoubV r) = (DoubV (l / r))
+numOpDiv (NumV l) (DoubV r) = (DoubV ((fromIntegral l) / r))
+numOpDiv (DoubV l) (NumV r) = (DoubV (l / (fromIntegral r)))
+numOpDiv _ _ = (error "Wrong value given to division")
 
 evalTestBool :: ExprValue -> Bool
 evalTestBool (BoolV b) = b
@@ -198,6 +210,7 @@ charOp e = error ("Char operation applied to non char: " ++ (show e))
 -- TODO come back here
 interp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
 interp (Numb n) _ _ = return (NumV n)
+interp (Doub n) _ _ = return (DoubV n)
 interp (Boolean b) _ _ = return (BoolV (matchStrToBool b))
 interp (CharE c) _ _ = return (CharV c)
 interp (Sym s) funDefs ds = do 
@@ -378,6 +391,7 @@ charFormatting c = [c]
 
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
+interpVal (DoubV n) = show n
 interpVal (BoolV b) = boolToString b
 interpVal (CharV c) = "#/" ++ (charFormatting c)
 interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"

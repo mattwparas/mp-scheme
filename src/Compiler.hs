@@ -6,20 +6,11 @@ import Parser
 
 import Data.Typeable (Typeable)
 import Data.Tree
-import Text.Parsec
-import Text.Parsec.String
 import Data.Either
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.Functor.Identity as F
 import qualified Text.Parsec.Prim as Prim
-import Text.Parsec
-       ((<|>), (<?>), many, many1, char, try, parse, sepBy, choice,
-        between)
-import Text.Parsec.Token
-       (integer, float, whiteSpace, stringLiteral, makeTokenParser, charLiteral)
-import Text.Parsec.Char (noneOf)
-import Text.Parsec.Language (haskell)
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
@@ -71,6 +62,7 @@ compFoldOptimization fnW fn args =
 
 compile :: WExpr -> Expr
 compile (NumbW n) = Numb n
+compile (DoubW n) = Doub n
 compile (CharW c) = CharE c
 compile (BooleanW b) = Boolean b
 compile (SymW s) = Sym s
