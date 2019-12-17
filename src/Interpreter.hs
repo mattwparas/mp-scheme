@@ -133,6 +133,36 @@ numOpDiv (NumV l) (DoubV r) = (DoubV ((fromIntegral l) / r))
 numOpDiv (DoubV l) (NumV r) = (DoubV (l / (fromIntegral r)))
 numOpDiv _ _ = (error "Wrong value given to division")
 
+numOpCompLt :: ExprValue -> ExprValue -> ExprValue
+numOpCompLt (NumV l) (NumV r) = (BoolV (l < r))
+numOpCompLt (DoubV l) (DoubV r) = (BoolV (l < r))
+numOpCompLt (NumV l) (DoubV r) = (BoolV ((fromIntegral l) < r))
+numOpCompLt (DoubV l) (NumV r) = (BoolV (l < (fromIntegral r)))
+numOpCompLt _ _ = (error "Wrong value given to less than")
+
+numOpCompGt :: ExprValue -> ExprValue -> ExprValue
+numOpCompGt (NumV l) (NumV r) = (BoolV (l > r))
+numOpCompGt (DoubV l) (DoubV r) = (BoolV (l > r))
+numOpCompGt (NumV l) (DoubV r) = (BoolV ((fromIntegral l) > r))
+numOpCompGt (DoubV l) (NumV r) = (BoolV (l > (fromIntegral r)))
+numOpCompGt _ _ = (error "Wrong value given to less than")
+
+numOpCompLtE :: ExprValue -> ExprValue -> ExprValue
+numOpCompLtE (NumV l) (NumV r) = (BoolV (l <= r))
+numOpCompLtE (DoubV l) (DoubV r) = (BoolV (l <= r))
+numOpCompLtE (NumV l) (DoubV r) = (BoolV ((fromIntegral l) <= r))
+numOpCompLtE (DoubV l) (NumV r) = (BoolV (l <= (fromIntegral r)))
+numOpCompLtE _ _ = (error "Wrong value given to less than")
+
+numOpCompGtE :: ExprValue -> ExprValue -> ExprValue
+numOpCompGtE (NumV l) (NumV r) = (BoolV (l >= r))
+numOpCompGtE (DoubV l) (DoubV r) = (BoolV (l >= r))
+numOpCompGtE (NumV l) (DoubV r) = (BoolV ((fromIntegral l) >= r))
+numOpCompGtE (DoubV l) (NumV r) = (BoolV (l >= (fromIntegral r)))
+numOpCompGtE _ _ = (error "Wrong value given to less than")
+
+
+
 evalTestBool :: ExprValue -> Bool
 evalTestBool (BoolV b) = b
 evalTestBool _ = error "Invalid bool Value"
@@ -207,6 +237,24 @@ charOp :: ExprValue -> Char
 charOp (CharV c) = c
 charOp e = error ("Char operation applied to non char: " ++ (show e))
 
+
+firstOp :: ExprValue -> ExprValue
+firstOp (ListV lst) = (head lst)
+firstOp (StringV str) = CharV (head str)
+firstOp e = error ("First applied to non list or string: " ++ (show e))
+
+restOp :: ExprValue -> ExprValue
+restOp (ListV lst) = ListV (tail lst)
+restOp (StringV str) = StringV (tail str)
+restOp e = error ("Rest applied to non list or string: " ++ (show e))
+
+emptyOp :: ExprValue -> ExprValue
+emptyOp (ListV lst) = (BoolV ((length lst) == 0))
+emptyOp (StringV str) = (BoolV ((length str) == 0))
+emptyOp e = error ("Empty? applied to non list or string: " ++ (show e))
+
+
+
 -- TODO come back here
 interp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
 interp (Numb n) _ _ = return (NumV n)
@@ -247,22 +295,22 @@ interp (Equal lhs rhs) funDefs ds = do
 interp (Lt lhs rhs) funDefs ds = do 
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
-    return (BoolV ((checkNumber l) < (checkNumber r)))
+    return (numOpCompLt l r)
 
 interp (Gt lhs rhs) funDefs ds = do 
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
-    return (BoolV ((checkNumber l) > (checkNumber r)))
+    return (numOpCompGt l r)
 
 interp (LtE lhs rhs) funDefs ds = do 
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
-    return (BoolV ((checkNumber l) <= (checkNumber r)))
+    return (numOpCompLtE l r)
 
 interp (GtE lhs rhs) funDefs ds = do 
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
-    return (BoolV ((checkNumber l) >= (checkNumber r)))
+    return (numOpCompGtE l r)
 
 interp (App funExpr (argExpr:xs)) funDefs ds = do
     fn <- (interp funExpr funDefs ds)
@@ -329,11 +377,13 @@ interp (ListE vals) funDefs ds = do
 
 interp (First lst) funDefs ds = do
     res <- (interp lst funDefs ds)
-    return (head (listOpV res))
+    return (firstOp res)
+    -- return (head (listOpV res))
 
 interp (Rest lst) funDefs ds = do
     res <- (interp lst funDefs ds)
-    return (ListV (tail (listOpV res)))
+    return (restOp res)
+    -- return (ListV (tail (listOpV res)))
 
 interp (Cons l r) funDefs ds = do
     hd <- (interp l funDefs ds)
@@ -350,7 +400,8 @@ interp (Not cond) funDefs ds = do
     return (BoolV (not (boolOp res)))
 interp (EmptyE lst) funDefs ds = do
     res <- (interp lst funDefs ds)
-    return (BoolV (length (listOpV res) == 0))
+    return (emptyOp res)
+    -- return (BoolV (length (listOpV res) == 0))
 interp (And lhs rhs) funDefs ds =  do -- TODO check if this is actually a necessary optimization?
     l <- (interp lhs funDefs ds)
     if l == (BoolV True)

@@ -460,3 +460,78 @@ main = hspec $ do
             let statement = "(/ 10.0 2.0)"
             res <- eval statement
             res `shouldBe` ["5.0"]
+        
+        it "first on a string" $ do
+            let statement = "(first \"apple\")"
+            res <- eval statement
+            res `shouldBe` ["#/a"]
+
+        it "rest on a string" $ do
+            let statement = "(rest \"apple\")"
+            res <- eval statement
+            res `shouldBe` ["\"pple\""]
+
+        it "empty? on a string - true" $ do
+            let statement = stdlib ++ "(empty? \"\")"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+        
+        it "empty? on a string - false" $ do
+            let statement = stdlib ++ "(empty? \"not empty string\")"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+        
+        it "length on a string" $ do
+            let statement = stdlib ++ "(length \"test\")"
+            res <- eval statement
+            res `shouldBe` ["4"]
+
+        it "< for doubles" $ do
+            let statement = "(< 2.0 5.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "< for doubles and ints" $ do
+            let statement = "(< 2.0 5)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "<= for doubles" $ do
+            let statement = "(<= 2.0 5.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "<= for doubles" $ do
+            let statement = "(<= 2.0 2.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "<= for doubles and ints" $ do
+            let statement = "(<= 2.0 5)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "> for doubles" $ do
+            let statement = "(> 5.0 2.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "> for doubles and ints" $ do
+            let statement = "(> 5.0 2)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it ">= for doubles" $ do
+            let statement = "(>= 5.0 2.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it ">= for doubles and ints" $ do
+            let statement = "(>= 5.0 2)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it ">= for doubles and ints" $ do
+            let statement = "(>= 5.0 5.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
