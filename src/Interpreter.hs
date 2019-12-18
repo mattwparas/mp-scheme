@@ -32,7 +32,7 @@ import System.Directory
 import System.IO as SIO
 -- import Data.Text.IO as TIO
 import Control.Monad.Reader
--- import Network
+import Network.HTTP
 
 import Data.Text.IO as TIO
 import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
@@ -67,19 +67,17 @@ printLnIO e = do
     return (NullV)
 
 
-
-
 -- TODO come back here
 
--- wSlurp :: ExprValue -> Eval ExprValue
--- wSlurp (StringV txt) = liftIO $ openURL txt
--- wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
+wSlurp :: ExprValue -> Eval ExprValue
+wSlurp (StringV txt) = liftIO $ openURL txt
+wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
 
--- openURL :: String -> IO LispVal
--- openURL x = do
---   req  <- simpleHTTP (getRequest $ x)
---   body <- getResponseBody req
---   return $ String $ body
+openURL :: String -> IO ExprValue
+openURL x = do
+  req  <- simpleHTTP (getRequest $ x)
+  body <- getResponseBody req
+  return $ StringV $ body
 
 
 
@@ -474,6 +472,11 @@ interp (UserInput) funDefs ds = do
 interp (PrintLn expr) funDefs ds = do
     res <- (interp expr funDefs ds)
     printLn res
+
+interp (GetE expr) funDefs ds = do
+    res <- (interp expr funDefs ds)
+    wSlurp res
+
 
 integerHuh :: ExprValue -> ExprValue
 integerHuh (NumV _) = BoolV True

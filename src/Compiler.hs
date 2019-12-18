@@ -124,6 +124,7 @@ compile (BoolHuhW b) = (BoolHuh (compile b))
 compile (NumberHuhW n) = (NumberHuh (compile n))
 compile (UserInputW) = (UserInput)
 compile (PrintLnW expr) = (PrintLn (compile expr))
+compile (GetW expr) = (GetE (compile expr))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

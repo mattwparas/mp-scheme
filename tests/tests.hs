@@ -622,3 +622,8 @@ main = hspec $ do
             \ (char? \"string\") (char? '(1 2 3 4)) (char? (lambda () 5))"
             res <- eval statement
             res `shouldBe` ["#f", "#f", "#f", "#f", "#f"]
+
+        it "println" $ do
+            let statement = "(println 5)"
+            res <- eval statement
+            res `shouldBe` ["null"]

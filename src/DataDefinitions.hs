@@ -92,6 +92,7 @@ data WExpr =
     | NumberHuhW WExpr
     | UserInputW
     | PrintLnW WExpr
+    | GetW WExpr
     deriving (Eq, Show)
       
 data Expr = 
@@ -140,6 +141,7 @@ data Expr =
     | NumberHuh Expr
     | UserInput
     | PrintLn Expr
+    | GetE Expr
     deriving (Eq, Show)
 
 
