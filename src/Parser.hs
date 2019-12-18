@@ -135,6 +135,8 @@ switchSymbol "list?" lv = (ListHuhW (parser (head lv)))
 switchSymbol "closure?" lv = (ClosureHuhW (parser (head lv)))
 switchSymbol "bool?" lv = (BoolHuhW (parser (head lv)))
 switchSymbol "number?" lv = (NumberHuhW (parser (head lv)))
+switchSymbol "user-input" lv = (UserInputW)
+switchSymbol "println" lv = (PrintLnW (parser (head (lv))))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 

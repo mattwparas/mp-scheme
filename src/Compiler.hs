@@ -122,6 +122,8 @@ compile (StringHuhW str) = (StringHuh (compile str))
 compile (CharHuhW char) = (CharHuh (compile char))
 compile (BoolHuhW b) = (BoolHuh (compile b))
 compile (NumberHuhW n) = (NumberHuh (compile n))
+compile (UserInputW) = (UserInput)
+compile (PrintLnW expr) = (PrintLn (compile expr))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

@@ -90,6 +90,8 @@ data WExpr =
     | CharHuhW WExpr
     | BoolHuhW WExpr
     | NumberHuhW WExpr
+    | UserInputW
+    | PrintLnW WExpr
     deriving (Eq, Show)
       
 data Expr = 
@@ -136,6 +138,8 @@ data Expr =
     | CharHuh Expr
     | BoolHuh Expr
     | NumberHuh Expr
+    | UserInput
+    | PrintLn Expr
     deriving (Eq, Show)
 
 
@@ -157,4 +161,5 @@ data ExprValue =
     | ClosureV String Expr DefSub
     | ListV [ExprValue]
     | StringV String
+    | NullV
     deriving (Eq, Show)

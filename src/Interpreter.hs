@@ -50,6 +50,25 @@ readTextToStringV path = do
         then (SIO.readFile path) >>= (return . StringV)
         else error (" file does not exist: " ++ path)
 
+userInput :: Eval ExprValue
+userInput = liftIO $ userInputToStringV
+
+userInputToStringV :: IO ExprValue
+userInputToStringV = do
+    SIO.getLine >>= (return . StringV)
+
+
+printLn :: ExprValue -> Eval ExprValue
+printLn e = liftIO $ printLnIO e
+
+printLnIO :: ExprValue -> IO ExprValue
+printLnIO e = do
+    res <- SIO.putStrLn (interpVal e)
+    return (NullV)
+
+
+
+
 -- TODO come back here
 
 -- wSlurp :: ExprValue -> Eval ExprValue
@@ -449,6 +468,13 @@ interp (NumberHuh n) funDefs ds = do
     res <- (interp n funDefs ds)
     return (numberHuh res)
 
+interp (UserInput) funDefs ds = do
+    userInput
+
+interp (PrintLn expr) funDefs ds = do
+    res <- (interp expr funDefs ds)
+    printLn res
+
 integerHuh :: ExprValue -> ExprValue
 integerHuh (NumV _) = BoolV True
 integerHuh _ = BoolV False
@@ -513,6 +539,7 @@ interpVal (CharV c) = "#/" ++ (charFormatting c)
 interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"
 interpVal (StringV s) = "\"" ++ s ++ "\""
 interpVal (ClosureV _ _ _) = "internal function"
+interpVal (NullV) = "null"
 
 
 multipleInterpVal :: [ExprValue] -> [String]
