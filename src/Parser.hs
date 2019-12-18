@@ -127,6 +127,14 @@ switchSymbol "slurp!" lv = (SlurpW (parser (head lv)))
 switchSymbol "spit!" lv = (SpitW (parser (head lv)) (parser (last lv)))
 switchSymbol "string->list" lv = (StringToListW (parser (head lv)))
 switchSymbol "list->string" lv = (ListToStringW (parser (head lv)))
+switchSymbol "integer?" lv = (IntegerHuhW (parser (head lv)))
+switchSymbol "double?" lv = (DoubleHuhW (parser (head lv)))
+switchSymbol "string?" lv = (StringHuhW (parser (head lv)))
+switchSymbol "char?" lv = (CharHuhW (parser (head lv)))
+switchSymbol "list?" lv = (ListHuhW (parser (head lv)))
+switchSymbol "closure?" lv = (ClosureHuhW (parser (head lv)))
+switchSymbol "bool?" lv = (BoolHuhW (parser (head lv)))
+switchSymbol "number?" lv = (NumberHuhW (parser (head lv)))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 

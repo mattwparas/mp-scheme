@@ -114,5 +114,14 @@ compile (CondWT tests els) =
 compile (CaseW exp cases els) =
     (Case (compile exp) (map (\x -> ((compile (fst x)), (compile (snd x)))) cases) (compile els))
 
+compile (IntegerHuhW int) = (IntegerHuh (compile int))
+compile (DoubleHuhW dub) = (DoubleHuh (compile dub))
+compile (ClosureHuhW expr) = (ClosureHuh (compile expr))
+compile (ListHuhW lst) = (ListHuh (compile lst))
+compile (StringHuhW str) = (StringHuh (compile str))
+compile (CharHuhW char) = (CharHuh (compile char))
+compile (BoolHuhW b) = (BoolHuh (compile b))
+compile (NumberHuhW n) = (NumberHuh (compile n))
+
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

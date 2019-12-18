@@ -237,7 +237,6 @@ charOp :: ExprValue -> Char
 charOp (CharV c) = c
 charOp e = error ("Char operation applied to non char: " ++ (show e))
 
-
 firstOp :: ExprValue -> ExprValue
 firstOp (ListV lst) = (head lst)
 firstOp (StringV str) = CharV (head str)
@@ -417,6 +416,72 @@ interp (Or lhs rhs) funDefs ds = do
             if r == (BoolV True)
             then return (BoolV True)
             else return (BoolV False)
+
+interp (IntegerHuh int) funDefs ds = do
+    res <- (interp int funDefs ds)
+    return (integerHuh res)
+
+interp (DoubleHuh dub) funDefs ds = do
+    res <- (interp dub funDefs ds)
+    return (doubleHuh res)
+
+interp (ClosureHuh fun) funDefs ds = do
+    res <- (interp fun funDefs ds)
+    return (closureHuh res)
+
+interp (ListHuh lst) funDefs ds = do
+    res <- (interp lst funDefs ds)
+    return (listHuh res)
+
+interp (StringHuh str) funDefs ds = do
+    res <- (interp str funDefs ds)
+    return (stringHuh res)
+
+interp (CharHuh char) funDefs ds = do
+    res <- (interp char funDefs ds)
+    return (charHuh res)
+
+interp (BoolHuh b) funDefs ds = do
+    res <- (interp b funDefs ds)
+    return (boolHuh res)
+
+interp (NumberHuh n) funDefs ds = do
+    res <- (interp n funDefs ds)
+    return (numberHuh res)
+
+integerHuh :: ExprValue -> ExprValue
+integerHuh (NumV _) = BoolV True
+integerHuh _ = BoolV False
+
+doubleHuh :: ExprValue -> ExprValue
+doubleHuh (DoubV _) = BoolV True
+doubleHuh _ = BoolV False
+
+closureHuh :: ExprValue -> ExprValue
+closureHuh (ClosureV _ _ _) = BoolV True
+closureHuh _ = BoolV False
+
+listHuh :: ExprValue -> ExprValue
+listHuh (ListV _) = BoolV True
+listHuh _ = BoolV False
+
+stringHuh :: ExprValue -> ExprValue
+stringHuh (StringV _) = BoolV True
+stringHuh _ = BoolV False
+
+charHuh :: ExprValue -> ExprValue
+charHuh (CharV _) = BoolV True
+charHuh _ = BoolV False
+
+numberHuh :: ExprValue -> ExprValue
+numberHuh (DoubV _) = BoolV True
+numberHuh (NumV _) = BoolV True
+numberHuh _ = BoolV False
+
+boolHuh :: ExprValue -> ExprValue
+boolHuh (BoolV _) = BoolV True
+boolHuh _ = BoolV False
+
 
 parseFunDef :: LispVal -> GlobalFunDef
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 

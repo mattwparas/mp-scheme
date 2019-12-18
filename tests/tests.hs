@@ -535,3 +535,90 @@ main = hspec $ do
             let statement = "(>= 5.0 5.0)"
             res <- eval statement
             res `shouldBe` ["#t"]
+
+        it "string? - true" $ do
+            let statement = "(string? \"hello\")"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "string? - false" $ do
+            let statement = "(string? '(1 2 3 4))"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+
+        it "list? - true" $ do
+            let statement = "(list? '(1 2 3 4))"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+        
+        it "list? - false" $ do
+            let statement = "(list? 4)"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+
+        it "list? - false" $ do
+            let statement = "(list? \"test\")"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+
+        it "number? - true" $ do
+            let statement = "(number? 1)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "number? - true" $ do
+            let statement = "(number? 1.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "double? - false" $ do
+            let statement = "(double? 1)"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+
+        it "double? - true" $ do
+            let statement = "(double? 1.0)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "integer? - true" $ do
+            let statement = "(integer? 1)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "integer? - false" $ do
+            let statement = "(integer? 1.0)"
+            res <- eval statement
+            res `shouldBe` ["#f"]
+
+        it "bool? - true" $ do
+            let statement = "(bool? #t) (bool? #f)"
+            res <- eval statement
+            res `shouldBe` ["#t", "#t"]
+
+        it "bool? - false" $ do
+            let statement = "(bool? 2) (bool? #/a) (bool? \"f\") (bool? \"#f\")"
+            res <- eval statement
+            res `shouldBe` ["#f", "#f", "#f", "#f"]
+
+        it "closure? - true" $ do
+            let statement = "(closure? (lambda (a) 5))"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "closure? - false" $ do
+            let statement = "(closure? 5) \
+            \ (closure? #/a) (closure? 5.0) (closure? \"string\") (closure? '(1 2 3 4))"
+            res <- eval statement
+            res `shouldBe` ["#f", "#f", "#f", "#f", "#f"]
+
+        it "char? - true" $ do
+            let statement = "(char? #/a)"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "char? - false" $ do
+            let statement = "(char? 5) (char? 5.0) \
+            \ (char? \"string\") (char? '(1 2 3 4)) (char? (lambda () 5))"
+            res <- eval statement
+            res `shouldBe` ["#f", "#f", "#f", "#f", "#f"]

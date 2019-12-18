@@ -82,6 +82,14 @@ data WExpr =
     | SpitW WExpr WExpr
     | StringToListW WExpr
     | ListToStringW WExpr
+    | IntegerHuhW WExpr
+    | DoubleHuhW WExpr
+    | ClosureHuhW WExpr
+    | ListHuhW WExpr
+    | StringHuhW WExpr
+    | CharHuhW WExpr
+    | BoolHuhW WExpr
+    | NumberHuhW WExpr
     deriving (Eq, Show)
       
 data Expr = 
@@ -120,6 +128,14 @@ data Expr =
     | Spit Expr Expr
     | StringToList Expr
     | ListToString Expr
+    | IntegerHuh Expr
+    | DoubleHuh Expr
+    | ClosureHuh Expr
+    | ListHuh Expr
+    | StringHuh Expr
+    | CharHuh Expr
+    | BoolHuh Expr
+    | NumberHuh Expr
     deriving (Eq, Show)
 
 
