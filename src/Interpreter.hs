@@ -110,7 +110,7 @@ lookupDS (Symbol s1) funDefs (ASub s2 val rest) =
 lookupDS _ _ _ = error "lookupDS malformed"
 
 lookupFundefs :: String -> [GlobalFunDef] -> Expr
-lookupFundefs s [] = error ("interp - free identifier" ++ s)
+lookupFundefs s [] = error ("interp - free identifier " ++ s)
 lookupFundefs s ((FundefG funName closure):xs) = 
     if funName == s
         then closure

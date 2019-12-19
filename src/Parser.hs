@@ -63,10 +63,14 @@ withHelper :: [LispVal] -> WExpr
 withHelper ((List ((Symbol s):body:[])):xs:[]) = (WithW s (parser body) (parser xs))
 withHelper _ = error "malformed withHelper"
 
+-- letExtract :: LispVal -> (String, WExpr)
+-- letExtract (List ((Symbol s):body)) = (s, (parser (last body)))
+-- letExtract _ = error "malformed let-extract"
+
+
 letExtract :: LispVal -> (String, WExpr)
 letExtract (List ((Symbol s):body:[])) = (s, (parser body))
 letExtract _ = error "malformed let-extract"
-
 
 
 letHelper :: [LispVal] -> WExpr
@@ -124,7 +128,7 @@ switchSymbol "or" lv = (OrW (map parser lv))
 switchSymbol "cond" lv = condHelper lv
 switchSymbol "case-split" lv = caseHelper lv
 
-switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
+switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2))) -- TODO come back
 switchSymbol "lambda" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv))) -- change to accept multiple arguments
 switchSymbol "λ" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv)))
 switchSymbol "with" lv = letHelper lv
