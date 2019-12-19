@@ -477,6 +477,20 @@ interp (GetE expr) funDefs ds = do
     res <- (interp expr funDefs ds)
     wSlurp res
 
+interp (BeginE exprs) funDefs ds = do
+    beginHelper exprs funDefs ds
+
+
+beginHelper :: [Expr] -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+beginHelper [] funDefs ds = error ("Empty begin statement!")
+beginHelper (x:xs) funDefs ds = do
+    res <- (interp x funDefs ds)
+    if xs == []
+        then do
+            return res
+        else beginHelper xs funDefs ds
+
+
 
 integerHuh :: ExprValue -> ExprValue
 integerHuh (NumV _) = BoolV True

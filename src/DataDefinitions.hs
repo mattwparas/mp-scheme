@@ -67,6 +67,7 @@ data WExpr =
     | FunW [String] WExpr
     | AppW WExpr [WExpr]
     | WithW String WExpr WExpr
+    -- | WithW [(String, WExpr)]
     | ListW [WExpr]
     | AndW [WExpr]
     | OrW [WExpr]
@@ -93,6 +94,8 @@ data WExpr =
     | UserInputW
     | PrintLnW WExpr
     | GetW WExpr
+    | BeginW [WExpr]
+    | LetW [(String, WExpr)] WExpr
     deriving (Eq, Show)
       
 data Expr = 
@@ -142,6 +145,7 @@ data Expr =
     | UserInput
     | PrintLn Expr
     | GetE Expr
+    | BeginE [Expr]
     deriving (Eq, Show)
 
 

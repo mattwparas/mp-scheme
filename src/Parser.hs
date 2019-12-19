@@ -63,6 +63,20 @@ withHelper :: [LispVal] -> WExpr
 withHelper ((List ((Symbol s):body:[])):xs:[]) = (WithW s (parser body) (parser xs))
 withHelper _ = error "malformed withHelper"
 
+letExtract :: LispVal -> (String, WExpr)
+letExtract (List ((Symbol s):body:[])) = (s, (parser body))
+letExtract _ = error "malformed let-extract"
+
+
+
+letHelper :: [LispVal] -> WExpr
+letHelper l = (LetW (map letExtract (unWrapBracket (head l))) (parser (last l)))
+
+
+
+-- withHelper2 :: [LispVal] -> WExpr
+-- withHelper2 ((List ((Symbol s) : body : [])) : res : [])
+
 funHelper :: LispVal -> [LispVal]
 funHelper (List v) = v
 funHelper _ = error "malformed function"
@@ -113,7 +127,8 @@ switchSymbol "case-split" lv = caseHelper lv
 switchSymbol "if" lv = (CondW (parser (lv !! 0)) (parser (lv !! 1)) (parser (lv !! 2)))
 switchSymbol "lambda" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv))) -- change to accept multiple arguments
 switchSymbol "λ" lv = (FunW (map extractSymbol (funHelper (head lv))) (parser (last lv)))
-switchSymbol "with" lv = withHelper lv
+switchSymbol "with" lv = letHelper lv
+switchSymbol "let" lv = letHelper lv
 switchSymbol "list" lv = (ListW (map parser lv))
 switchSymbol "first" lv = (FirstW (parser (head lv)))
 switchSymbol "rest" lv = (RestW (parser (head lv)))
@@ -138,6 +153,7 @@ switchSymbol "number?" lv = (NumberHuhW (parser (head lv)))
 switchSymbol "user-input" lv = (UserInputW)
 switchSymbol "println" lv = (PrintLnW (parser (head (lv))))
 switchSymbol "get!" lv = (GetW (parser (head lv)))
+switchSymbol "begin" lv = (BeginW (map parser lv))
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 

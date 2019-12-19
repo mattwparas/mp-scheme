@@ -81,6 +81,12 @@ compile (GtEW args) = compFoldOptimization GtEW GtE args
 compile (LtEW args) = compFoldOptimization LtEW LtE args
 compile (CondW tst thn els) = (Cond (compile tst) (compile thn) (compile els))
 compile (WithW name namedExpr body) = (App (Fun [name] (compile body)) [(compile namedExpr)])
+
+compile (LetW symPairs body) = 
+    if (length symPairs == 1)
+        then (compile (WithW (fst (head symPairs)) (snd (head symPairs)) body))
+        else (compile (WithW (fst (head symPairs)) (snd (head symPairs)) (LetW (tail symPairs) body)))
+
 compile (SlurpW path) = (Slurp (compile path))
 compile (SpitW path val) = (Spit (compile path) (compile val))
 compile (StringToListW str) = (StringToList (compile str))
@@ -125,6 +131,7 @@ compile (NumberHuhW n) = (NumberHuh (compile n))
 compile (UserInputW) = (UserInput)
 compile (PrintLnW expr) = (PrintLn (compile expr))
 compile (GetW expr) = (GetE (compile expr))
+compile (BeginW exprs) = (BeginE (map compile exprs))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

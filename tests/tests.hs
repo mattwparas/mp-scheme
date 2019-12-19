@@ -627,3 +627,43 @@ main = hspec $ do
             let statement = "(println 5)"
             res <- eval statement
             res `shouldBe` ["null"]
+
+        it "begin statement" $ do
+            let statement = "(begin 1 2 3 4 5)"
+            res <- eval statement
+            res `shouldBe` ["5"]
+
+        it "Let - binding local variables" $ do
+            let statement = "(let [(a 15)] (+ a a))"
+            res <- eval statement
+            res `shouldBe` ["30"]
+
+        it "Let - binding multiple local variables" $ do
+            let statement = "(let [(a 20) (b 30)] (+ a b))"
+            res <- eval statement
+            res `shouldBe` ["50"]
+        
+        it "Let - binding multiple local variables with shadowing" $ do
+            let statement = "(let [(a 20) (b 30)] ((lambda (a b) (+ a b)) 1 2))"
+            res <- eval statement
+            res `shouldBe` ["3"]
+
+        it "With - binding local variables" $ do
+            let statement = "(with [(a 15)] (+ a a))"
+            res <- eval statement
+            res `shouldBe` ["30"]
+
+        it "With - binding multiple local variables" $ do
+            let statement = "(with [(a 20) (b 30)] (+ a b))"
+            res <- eval statement
+            res `shouldBe` ["50"]
+        
+        it "With - binding multiple local variables with shadowing" $ do
+            let statement = "(with [(a 20) (b 30)] ((lambda (a b) (+ a b)) 1 2))"
+            res <- eval statement
+            res `shouldBe` ["3"]
+
+        it "Let with begin" $ do
+            let statement = "(let [(a 10) (b 20) (c 30)] (begin 3 4 5 (list a b c)))"
+            res <- eval statement
+            res `shouldBe` ["'(10 20 30)"]
