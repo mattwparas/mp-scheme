@@ -38,14 +38,6 @@ import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, f
 
 {------------- Parsing -------------}
 
-isInteger s = case reads s :: [(Integer, String)] of
-    [(_, "")] -> True
-    _         -> False
-   
-isDouble s = case reads s :: [(Double, String)] of
-    [(_, "")] -> True
-    _         -> False
-
 isNumeric :: String -> Bool
 isNumeric s = isInteger s || isDouble s
 
@@ -111,6 +103,12 @@ condHelper lst =
     (map (\x -> ((parser (head (unWrapBracket x))), (parser (last (unWrapBracket x))))) (getAllButLast lst)) 
     (parser (last (unWrapBracket (last lst)))))
 
+
+structHelper :: [LispVal] -> WExpr
+structHelper lst = 
+    (StructW 
+    (map (\x -> ((extractSymbol (head (unWrapBracket x))), (parser (last (unWrapBracket x))))) lst))
+
 switchSymbol :: String -> [LispVal] -> WExpr
 switchSymbol "+" lv = (AddW (map parser lv)) -- TODO error checking
 switchSymbol "-" lv = (SubW (map parser lv))
@@ -144,20 +142,39 @@ switchSymbol "not" lv = (NotW (parser (head lv)))
 switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
 switchSymbol "slurp!" lv = (SlurpW (parser (head lv)))
 switchSymbol "spit!" lv = (SpitW (parser (head lv)) (parser (last lv)))
-switchSymbol "string->list" lv = (StringToListW (parser (head lv)))
-switchSymbol "list->string" lv = (ListToStringW (parser (head lv)))
-switchSymbol "integer?" lv = (IntegerHuhW (parser (head lv)))
-switchSymbol "double?" lv = (DoubleHuhW (parser (head lv)))
-switchSymbol "string?" lv = (StringHuhW (parser (head lv)))
-switchSymbol "char?" lv = (CharHuhW (parser (head lv)))
-switchSymbol "list?" lv = (ListHuhW (parser (head lv)))
-switchSymbol "closure?" lv = (ClosureHuhW (parser (head lv)))
-switchSymbol "bool?" lv = (BoolHuhW (parser (head lv)))
-switchSymbol "number?" lv = (NumberHuhW (parser (head lv)))
+
+switchSymbol "integer?" lv = (CheckTypeW (parser (head lv)) (IntT)) -- should be ExprValues, not WExpr
+switchSymbol "double?" lv = (CheckTypeW (parser (head lv)) (DoubT))
+switchSymbol "string?" lv = (CheckTypeW (parser (head lv)) (StringT))
+switchSymbol "char?" lv = (CheckTypeW (parser (head lv)) (CharT))
+switchSymbol "list?" lv = (CheckTypeW (parser (head lv)) (ListT))
+switchSymbol "closure?" lv = (CheckTypeW (parser (head lv)) (ClosureT))
+switchSymbol "bool?" lv = (CheckTypeW (parser (head lv)) (BoolT))
+switchSymbol "struct?" lv = (CheckTypeW (parser (head lv)) (StructT))
+
+switchSymbol "number?" lv = (CheckTypeW (parser (head lv)) (NumberT))
+
+
 switchSymbol "user-input" lv = (UserInputW)
 switchSymbol "println" lv = (PrintLnW (parser (head (lv))))
 switchSymbol "get!" lv = (GetW (parser (head lv)))
 switchSymbol "begin" lv = (BeginW (map parser lv))
+switchSymbol "struct" lv = structHelper lv
+
+switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
+
+switchSymbol "string->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
+switchSymbol "string->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
+switchSymbol "string->list" lv = (CastExpressionW (parser (head lv)) (ListT))
+switchSymbol "list->string" lv = (CastExpressionW (parser (head lv)) (StringT))
+
+
+
+{- 
+TODO more here for each type conversion
+-}
+
+
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
 

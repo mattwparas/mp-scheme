@@ -81,21 +81,15 @@ data WExpr =
     | CaseW WExpr [(WExpr, WExpr)] WExpr
     | SlurpW WExpr
     | SpitW WExpr WExpr
-    | StringToListW WExpr
-    | ListToStringW WExpr
-    | IntegerHuhW WExpr
-    | DoubleHuhW WExpr
-    | ClosureHuhW WExpr
-    | ListHuhW WExpr
-    | StringHuhW WExpr
-    | CharHuhW WExpr
-    | BoolHuhW WExpr
-    | NumberHuhW WExpr
     | UserInputW
     | PrintLnW WExpr
     | GetW WExpr
     | BeginW [WExpr]
     | LetW [(String, WExpr)] WExpr
+    | StructW [(String, WExpr)]
+    | StructGetW String WExpr
+    | CastExpressionW WExpr ExprValueT
+    | CheckTypeW WExpr ExprValueT
     deriving (Eq, Show)
       
 data Expr = 
@@ -132,20 +126,14 @@ data Expr =
     | Case Expr [(Expr, Expr)] Expr
     | Slurp Expr
     | Spit Expr Expr
-    | StringToList Expr
-    | ListToString Expr
-    | IntegerHuh Expr
-    | DoubleHuh Expr
-    | ClosureHuh Expr
-    | ListHuh Expr
-    | StringHuh Expr
-    | CharHuh Expr
-    | BoolHuh Expr
-    | NumberHuh Expr
     | UserInput
     | PrintLn Expr
     | GetE Expr
     | BeginE [Expr]
+    | StructE [(String, Expr)]
+    | StructGetE String Expr
+    | CastExpression Expr ExprValueT
+    | CheckTypeE Expr ExprValueT
     deriving (Eq, Show)
 
 
@@ -159,6 +147,19 @@ data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
 -- Replace every instance of [FunDef] with HashMap
 data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
+data ExprValueT =
+    NumberT
+    | IntT
+    | DoubT
+    | CharT
+    | BoolT
+    | ClosureT
+    | ListT
+    | StringT
+    | StructT
+    | NullT
+    deriving (Eq, Show)
+
 data ExprValue =
     NumV Integer
     | DoubV Double
@@ -167,5 +168,6 @@ data ExprValue =
     | ClosureV String Expr DefSub
     | ListV [ExprValue]
     | StringV String
+    | StructV [(String, ExprValue)] -- TODO check this out maybe?
     | NullV
     deriving (Eq, Show)

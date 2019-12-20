@@ -89,8 +89,6 @@ compile (LetW symPairs body) =
 
 compile (SlurpW path) = (Slurp (compile path))
 compile (SpitW path val) = (Spit (compile path) (compile val))
-compile (StringToListW str) = (StringToList (compile str))
-compile (ListToStringW lst) = (ListToString (compile lst))
 
 compile (AppW funExpr argExprs) =
     if (length argExprs == 0)
@@ -120,18 +118,15 @@ compile (CondWT tests els) =
 compile (CaseW exp cases els) =
     (Case (compile exp) (map (\x -> ((compile (fst x)), (compile (snd x)))) cases) (compile els))
 
-compile (IntegerHuhW int) = (IntegerHuh (compile int))
-compile (DoubleHuhW dub) = (DoubleHuh (compile dub))
-compile (ClosureHuhW expr) = (ClosureHuh (compile expr))
-compile (ListHuhW lst) = (ListHuh (compile lst))
-compile (StringHuhW str) = (StringHuh (compile str))
-compile (CharHuhW char) = (CharHuh (compile char))
-compile (BoolHuhW b) = (BoolHuh (compile b))
-compile (NumberHuhW n) = (NumberHuh (compile n))
+compile (StructW pairs) = (StructE (map (\x -> ((fst x), (compile (snd x)))) pairs))
+compile (StructGetW name struct) = (StructGetE name (compile struct))
 compile (UserInputW) = (UserInput)
 compile (PrintLnW expr) = (PrintLn (compile expr))
 compile (GetW expr) = (GetE (compile expr))
 compile (BeginW exprs) = (BeginE (map compile exprs))
+
+compile (CastExpressionW expr t) = (CastExpression (compile expr) t)
+compile (CheckTypeW expr t) = (CheckTypeE (compile expr) t)
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

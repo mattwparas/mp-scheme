@@ -667,3 +667,29 @@ main = hspec $ do
             let statement = "(let [(a 10) (b 20) (c 30)] (begin 3 4 5 (list a b c)))"
             res <- eval statement
             res `shouldBe` ["'(10 20 30)"]
+
+        it "Define struct" $ do
+            let statement = "(struct [key => \"value\"] [key2 => 15] [key3 => 25])"
+            res <- eval statement
+            res `shouldBe` ["struct: {(key => \"value\") (key2 => 15) (key3 => 25)}"]
+
+        it "struct?" $ do
+            let statement = "(struct? (struct [key => \"value\"] [key2 => 15] [key3 => 25]))"
+            res <- eval statement
+            res `shouldBe` ["#t"]
+
+        it "struct-get" $ do
+            let statement = "(struct-get key (struct [key => \"value\"] [key2 => 15] [key3 => 25]))"
+            res <- eval statement
+            res `shouldBe` ["\"value\""]
+
+        it "struct-get nested struct" $ do
+            let statement = "(let [(a (struct [key => (struct [key => 100])]))] \
+                            \ (struct-get key (struct-get key a)))"
+            res <- eval statement
+            res `shouldBe` ["100"]
+
+        it "string-append" $ do
+            let statement = "(append \"apple\" \"sauce\")"
+            res <- eval statement
+            res `shouldBe` ["\"applesauce\""]

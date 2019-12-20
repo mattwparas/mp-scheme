@@ -35,7 +35,7 @@ import Control.Monad.Reader
 import Network.HTTP
 
 import Data.Text.IO as TIO
-import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
+import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take, zip)
 
 
 slurp :: ExprValue -> Eval ExprValue
@@ -179,6 +179,50 @@ numOpCompGtE (DoubV l) (NumV r) = (BoolV (l >= (fromIntegral r)))
 numOpCompGtE _ _ = (error "Wrong value given to less than")
 
 
+-- numOpInts :: (Integer -> Integer -> Bool) -> Integer -> Integer -> ExprValue
+-- numOpInts operation l r = (BoolV (l `operation` r))
+
+-- numOpDubs :: (Double -> Double -> Bool) -> Double -> Double -> ExprValue
+-- numOpDubs operation l r = (BoolV (l `operation` r))
+
+
+-- numOpComparator :: (Integer -> Integer -> Bool) -> ExprValue -> ExprValue -> ExprValue
+-- numOpComparator operation (NumV l) (NumV r) = numOpInts operation l r
+-- numOpComparator operation (DoubV l) (DoubV r) = numOpDubs operation l r
+-- numOpComparator operation (NumV l) (DoubV r) = numOpDubs operation (fromIntegral l) r
+-- numOpComparator operation (DoubV l) (NumV r) = numOpDubs operation l (fromIntegral) r
+
+-- exprGt :: ExprValue -> ExprValue -> Bool
+-- exprGt (NumV l) (NumV r) = (l > r)
+-- exprGt (DoubV l) (DoubV r) = (l > r)
+-- exprGt (NumV l) (DoubV r) = ((fromIntegral l) > r)
+-- exprGt (DoubV l) (NumV r) = (l > (fromIntegral r))
+
+-- exprGtE :: ExprValue -> ExprValue -> Bool
+-- exprGtE (NumV l) (NumV r) = (l >= r)
+-- exprGtE (DoubV l) (DoubV r) = (l >= r)
+-- exprGtE (NumV l) (DoubV r) = ((fromIntegral l) >= r)
+-- exprGtE (DoubV l) (NumV r) = (l >= (fromIntegral r))
+
+-- exprLt :: ExprValue -> ExprValue -> Bool
+-- exprLt (NumV l) (NumV r) = (l < r)
+-- exprLt (DoubV l) (DoubV r) = (l < r)
+-- exprLt (NumV l) (DoubV r) = ((fromIntegral l) < r)
+-- exprLt (DoubV l) (NumV r) = (l < (fromIntegral r))
+
+-- exprLtE :: ExprValue -> ExprValue -> Bool
+-- exprLtE (NumV l) (NumV r) = (l <= r)
+-- exprLtE (DoubV l) (DoubV r) = (l <= r)
+-- exprLtE (NumV l) (DoubV r) = ((fromIntegral l) <= r)
+-- exprLtE (DoubV l) (NumV r) = (l <= (fromIntegral r))
+
+-- numOpComparator :: (ExprValue -> ExprValue -> Bool) -> ExprValue -> ExperValue -> ExprValue
+-- numOpComparator operation l r = operation l r
+
+
+-- test :: (a -> a -> a) -> ExprValue -> ExprValue -> ExprValue
+-- test (+) (NumV l) (NumV r) = (BoolV (l + r))
+
 
 evalTestBool :: ExprValue -> Bool
 evalTestBool (BoolV b) = b
@@ -269,6 +313,10 @@ emptyOp (ListV lst) = (BoolV ((length lst) == 0))
 emptyOp (StringV str) = (BoolV ((length str) == 0))
 emptyOp e = error ("Empty? applied to non list or string: " ++ (show e))
 
+appendOp :: ExprValue -> ExprValue -> ExprValue
+appendOp (ListV l) (ListV r) = (ListV (l ++ r))
+appendOp (StringV l) (StringV r) = (StringV (l ++ r))
+appendOPp l r = error ("Append used between non matching lists or strings: " ++ (show l) ++ " " ++ (show r))
 
 
 -- TODO come back here
@@ -312,6 +360,7 @@ interp (Lt lhs rhs) funDefs ds = do
     l <- interp lhs funDefs ds
     r <- interp rhs funDefs ds
     return (numOpCompLt l r)
+    -- return (numOpComparator (<) l r)
 
 interp (Gt lhs rhs) funDefs ds = do 
     l <- interp lhs funDefs ds
@@ -377,16 +426,6 @@ interp (Spit path res) funDefs ds = do
     msg <- (interp res funDefs ds)
     (put filePath msg)
 
-interp (StringToList str) funDefs ds = do
-    res <- (interp str funDefs ds)
-    let intstr = stringOp res
-    return (ListV (map (\x -> (CharV x)) intstr))
-
-interp (ListToString lst) funDefs ds = do
-    res <- (interp lst funDefs ds)
-    let intlst = listOpV res
-    return (StringV (map charOp intlst))
-
 interp (ListE vals) funDefs ds = do
     res <- (mapM (\x -> (interp x funDefs ds)) vals)
     return (ListV res)
@@ -409,7 +448,7 @@ interp (Cons l r) funDefs ds = do
 interp (Append l r) funDefs ds = do
     ll <- (interp l funDefs ds)
     rr <- (interp r funDefs ds)
-    return (ListV ((listOpV ll) ++ (listOpV rr)))
+    return (appendOp ll rr)
 
 interp (Not cond) funDefs ds = do
     res <- (interp cond funDefs ds)
@@ -434,37 +473,6 @@ interp (Or lhs rhs) funDefs ds = do
             then return (BoolV True)
             else return (BoolV False)
 
-interp (IntegerHuh int) funDefs ds = do
-    res <- (interp int funDefs ds)
-    return (integerHuh res)
-
-interp (DoubleHuh dub) funDefs ds = do
-    res <- (interp dub funDefs ds)
-    return (doubleHuh res)
-
-interp (ClosureHuh fun) funDefs ds = do
-    res <- (interp fun funDefs ds)
-    return (closureHuh res)
-
-interp (ListHuh lst) funDefs ds = do
-    res <- (interp lst funDefs ds)
-    return (listHuh res)
-
-interp (StringHuh str) funDefs ds = do
-    res <- (interp str funDefs ds)
-    return (stringHuh res)
-
-interp (CharHuh char) funDefs ds = do
-    res <- (interp char funDefs ds)
-    return (charHuh res)
-
-interp (BoolHuh b) funDefs ds = do
-    res <- (interp b funDefs ds)
-    return (boolHuh res)
-
-interp (NumberHuh n) funDefs ds = do
-    res <- (interp n funDefs ds)
-    return (numberHuh res)
 
 interp (UserInput) funDefs ds = do
     userInput
@@ -480,6 +488,31 @@ interp (GetE expr) funDefs ds = do
 interp (BeginE exprs) funDefs ds = do
     beginHelper exprs funDefs ds
 
+interp (StructE pairs) funDefs ds = do
+    evals <- (mapM (\x -> (interp (snd x) funDefs ds)) pairs)
+    let res = (map (\x -> (fst x)) pairs)
+    return (StructV (zip res evals))
+
+interp (StructGetE name struct) funDefs ds = do
+    res <- interp struct funDefs ds
+    return (getStructHelper name res)
+
+interp (CastExpression expr t) funDefs ds = do
+    exp <- interp expr funDefs ds
+    return (castType exp t)
+
+interp (CheckTypeE expr t) funDefs ds = do
+    exp <- interp expr funDefs ds
+    return (checkType exp t)
+
+
+getStructHelper :: String -> ExprValue -> ExprValue
+getStructHelper name (StructV []) = error ("Key not found in struct: " ++ name)
+getStructHelper name (StructV (x:xs)) = 
+    if name == (fst x)
+        then (snd x)
+        else getStructHelper name (StructV xs)
+getStructHelper _ _ = error "malformed getStructHelper"
 
 beginHelper :: [Expr] -> [GlobalFunDef] -> DefSub -> Eval ExprValue
 beginHelper [] funDefs ds = error ("Empty begin statement!")
@@ -490,6 +523,50 @@ beginHelper (x:xs) funDefs ds = do
             return res
         else beginHelper xs funDefs ds
 
+
+
+{-
+
+reads :: (Read a) => String -> [(a, String)]
+
+Prelude> reads "5" :: [(Double, String)]
+[(5.0,"")]
+Prelude> reads "5ds" :: [(Double, String)]
+[(5.0,"ds")]
+Prelude> reads "dffd" :: [(Double, String)]
+[]
+
+-}
+
+
+checkType :: ExprValue -> ExprValueT -> ExprValue
+checkType (NumV _) (IntT) = BoolV True
+checkType (DoubV _) (DoubT) = BoolV True
+checkType (NumV _) (NumberT) = BoolV True
+checkType (DoubV _) (NumberT) = BoolV True
+checkType (ClosureV _ _ _) (ClosureT) = BoolV True
+checkType (ListV _) (ListT) = BoolV True
+checkType (CharV _) (CharT) = BoolV True
+checkType (BoolV _) (BoolT) = BoolV True
+checkType (StructV _) (StructT) = BoolV True
+checkType (StringV _) (StringT) = BoolV True
+checkType _ _ = BoolV False
+
+-- TODO finish this up for all cases
+castType :: ExprValue -> ExprValueT -> ExprValue
+castType (StringV s) (IntT) = 
+    if isInteger s
+        then (NumV (read s::Integer))
+        else error ("Cannot cast value from string to integer: " ++ s)
+castType (StringV s) (DoubT) = 
+    if isDouble s
+        then (DoubV (read s::Double))
+        else error ("Cannot cast value from string to double: " ++ s)
+
+castType (StringV s) (ListT) = (ListV (map (\x -> (CharV x)) s))
+castType (ListV l) (StringT) = (StringV (map charOp l))
+
+castType l r = error ("not implemented for: " ++ (show r))
 
 
 integerHuh :: ExprValue -> ExprValue
@@ -525,6 +602,10 @@ boolHuh :: ExprValue -> ExprValue
 boolHuh (BoolV _) = BoolV True
 boolHuh _ = BoolV False
 
+structHuh :: ExprValue -> ExprValue
+structHuh (StructV _) = BoolV True
+structHuh _ = BoolV False
+
 
 parseFunDef :: LispVal -> GlobalFunDef
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
@@ -548,6 +629,9 @@ charFormatting :: Char -> String
 charFormatting ' ' = "space"
 charFormatting c = [c]
 
+
+
+
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n
 interpVal (DoubV n) = show n
@@ -556,6 +640,11 @@ interpVal (CharV c) = "#/" ++ (charFormatting c)
 interpVal (ListV vals) = "'(" ++ unwords (map interpVal vals) ++ ")"
 interpVal (StringV s) = "\"" ++ s ++ "\""
 interpVal (ClosureV _ _ _) = "internal function"
+interpVal (StructV pairs) = do
+    let keys = (map (\x -> (fst x)) pairs)
+    let vals = (map (\x -> (interpVal (snd x))) pairs)
+    let combined = zip keys vals
+    "struct: " ++ "{" ++ unwords (map (\x -> "(" ++ (fst x) ++ " => " ++ (snd x) ++ ")") combined) ++ "}"
 interpVal (NullV) = "null"
 
 
