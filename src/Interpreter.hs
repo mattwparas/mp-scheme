@@ -6,22 +6,9 @@ import Lexer
 import Compiler
 import Parser
 
-import Data.Typeable (Typeable)
-import Data.Tree
-import Text.Parsec
-import Text.Parsec.String
-import Data.Either
 import Data.Map (Map)
 import qualified Data.Map as Map
-import qualified Data.Functor.Identity as F
-import qualified Text.Parsec.Prim as Prim
-import Text.Parsec
-        ((<|>), (<?>), many, many1, char, try, parse, sepBy, choice,
-        between)
-import Text.Parsec.Token
-        (integer, float, whiteSpace, stringLiteral, makeTokenParser, charLiteral)
-import Text.Parsec.Char (noneOf)
-import Text.Parsec.Language (haskell)
+
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader
@@ -194,51 +181,6 @@ numOpCompGtE (DoubV l) (NumV r) = (BoolV (l >= (fromIntegral r)))
 numOpCompGtE _ _ = (error "Wrong value given to less than")
 
 
--- numOpInts :: (Integer -> Integer -> Bool) -> Integer -> Integer -> ExprValue
--- numOpInts operation l r = (BoolV (l `operation` r))
-
--- numOpDubs :: (Double -> Double -> Bool) -> Double -> Double -> ExprValue
--- numOpDubs operation l r = (BoolV (l `operation` r))
-
-
--- numOpComparator :: (Integer -> Integer -> Bool) -> ExprValue -> ExprValue -> ExprValue
--- numOpComparator operation (NumV l) (NumV r) = numOpInts operation l r
--- numOpComparator operation (DoubV l) (DoubV r) = numOpDubs operation l r
--- numOpComparator operation (NumV l) (DoubV r) = numOpDubs operation (fromIntegral l) r
--- numOpComparator operation (DoubV l) (NumV r) = numOpDubs operation l (fromIntegral) r
-
--- exprGt :: ExprValue -> ExprValue -> Bool
--- exprGt (NumV l) (NumV r) = (l > r)
--- exprGt (DoubV l) (DoubV r) = (l > r)
--- exprGt (NumV l) (DoubV r) = ((fromIntegral l) > r)
--- exprGt (DoubV l) (NumV r) = (l > (fromIntegral r))
-
--- exprGtE :: ExprValue -> ExprValue -> Bool
--- exprGtE (NumV l) (NumV r) = (l >= r)
--- exprGtE (DoubV l) (DoubV r) = (l >= r)
--- exprGtE (NumV l) (DoubV r) = ((fromIntegral l) >= r)
--- exprGtE (DoubV l) (NumV r) = (l >= (fromIntegral r))
-
--- exprLt :: ExprValue -> ExprValue -> Bool
--- exprLt (NumV l) (NumV r) = (l < r)
--- exprLt (DoubV l) (DoubV r) = (l < r)
--- exprLt (NumV l) (DoubV r) = ((fromIntegral l) < r)
--- exprLt (DoubV l) (NumV r) = (l < (fromIntegral r))
-
--- exprLtE :: ExprValue -> ExprValue -> Bool
--- exprLtE (NumV l) (NumV r) = (l <= r)
--- exprLtE (DoubV l) (DoubV r) = (l <= r)
--- exprLtE (NumV l) (DoubV r) = ((fromIntegral l) <= r)
--- exprLtE (DoubV l) (NumV r) = (l <= (fromIntegral r))
-
--- numOpComparator :: (ExprValue -> ExprValue -> Bool) -> ExprValue -> ExperValue -> ExprValue
--- numOpComparator operation l r = operation l r
-
-
--- test :: (a -> a -> a) -> ExprValue -> ExprValue -> ExprValue
--- test (+) (NumV l) (NumV r) = (BoolV (l + r))
-
-
 evalTestBool :: ExprValue -> Bool
 evalTestBool (BoolV b) = b
 evalTestBool _ = error "Invalid bool Value"
@@ -250,15 +192,11 @@ evalEquality (BoolV l) (BoolV r) = BoolV (l == r)
 evalEquality _ _ = BoolV False
 
 appEval :: ExprValue -> ExprValue -> FunCtx -> Eval ExprValue
--- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
--- appEval (ClosureV paramName body ds) argVal funDefs = 
---     (interp body funDefs (ASub paramName argVal ds))
 appEval (ClosureV paramName body ds) argVal funDefs = 
     (interp body funDefs (Map.insert paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
 appEvalNoArgs :: ExprValue -> FunCtx -> Eval ExprValue
--- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
 appEvalNoArgs (ClosureV paramName body ds) funDefs = (interp body funDefs ds)
 appEvalNoArgs _ _ = error "expected function"
 
@@ -273,16 +211,6 @@ matchStrToBool "#F" = False
 matchStrToBool "#True" = True
 matchStrToBool "#False" = False
 matchStrToBool _ = error "Boolean malformed"
-
--- defSubHelper :: [String] -> FunCtx -> [Expr] -> DefSub -> Eval DefSub
--- defSubHelper [] funDefs [] ds = return (Map.empty)
--- defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
--- defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
--- defSubHelper (x:xs) funDefs (b:bs) ds = 
---     do 
---         res <- (interp b funDefs ds)
---         defs <- (defSubHelper xs funDefs bs ds)
---         return (ASub x res defs)
 
 checkNumber :: ExprValue -> Number
 checkNumber (NumV n) = n
@@ -542,21 +470,6 @@ beginHelper (x:xs) funDefs ds = do
         else beginHelper xs funDefs ds
 
 
-
-{-
-
-reads :: (Read a) => String -> [(a, String)]
-
-Prelude> reads "5" :: [(Double, String)]
-[(5.0,"")]
-Prelude> reads "5ds" :: [(Double, String)]
-[(5.0,"ds")]
-Prelude> reads "dffd" :: [(Double, String)]
-[]
-
--}
-
-
 checkType :: ExprValue -> ExprValueT -> ExprValue
 checkType (NumV _) (IntT) = BoolV True
 checkType (DoubV _) (DoubT) = BoolV True
@@ -600,11 +513,6 @@ parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : 
     (funName, (compile (FunW (map extractSymbol args) (parser body))))
 parseFunDef _ = error "parseFunDef - malformed function"
 
--- parseFunDef :: LispVal -> GlobalFunDef
--- parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
---     (FundefG funName (compile (FunW (map extractSymbol args) (parser body))))
--- parseFunDef _ = error "parseFunDef - malformed function"
-
 parseFunDefs :: [LispVal] -> FunCtx
 parseFunDefs x = Map.fromList (map parseFunDef x)
 
@@ -621,8 +529,6 @@ multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
 charFormatting :: Char -> String
 charFormatting ' ' = "space"
 charFormatting c = [c]
-
-
 
 
 interpVal :: ExprValue -> String
@@ -651,8 +557,6 @@ eval :: String -> IO [String]
 eval expr = do
     let res = (multipleInterp (compileMap (parserWrapper (getAllExprs (lexer expr)))) (getFunDefs expr))
     (runReaderT (unEval (multipleInterpValL res)) (StringW ""))
-
-    -- (map (\x -> (runReaderT (unEval x) (StringW ""))) test)
 
 evalWithStdLib :: String -> String -> IO [String]
 evalWithStdLib expr file = do

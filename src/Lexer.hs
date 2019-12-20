@@ -4,13 +4,9 @@ import DataDefinitions
 import Helpers
 
 
-import Data.Typeable (Typeable)
-import Data.Tree
 import Text.Parsec
 import Text.Parsec.String
 import Data.Either
-import Data.Map (Map)
-import qualified Data.Map as Map
 import qualified Data.Functor.Identity as F
 import qualified Text.Parsec.Prim as Prim
 import Text.Parsec
@@ -20,21 +16,6 @@ import Text.Parsec.Token
        (integer, float, whiteSpace, stringLiteral, makeTokenParser, charLiteral)
 import Text.Parsec.Char (noneOf)
 import Text.Parsec.Language (haskell)
-
-import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Control.Exception hiding (handle, try)
-
--- import Data.Monoid
-import System.Directory
-import System.IO as SIO
--- import Data.Text.IO as TIO
-import Control.Monad.Reader
--- import Network
-
-import Data.Text.IO as TIO
-import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
-
 
 
 tProg :: Prim.ParsecT String a F.Identity LispVal

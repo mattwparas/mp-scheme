@@ -4,38 +4,6 @@ import DataDefinitions
 import Helpers
 import Lexer
 
-import Data.Typeable (Typeable)
-import Data.Tree
-import Text.Parsec
-import Text.Parsec.String
-import Data.Either
-import Data.Map (Map)
-import qualified Data.Map as Map
-import qualified Data.Functor.Identity as F
-import qualified Text.Parsec.Prim as Prim
-import Text.Parsec
-       ((<|>), (<?>), many, many1, char, try, parse, sepBy, choice,
-        between)
-import Text.Parsec.Token
-       (integer, float, whiteSpace, stringLiteral, makeTokenParser, charLiteral)
-import Text.Parsec.Char (noneOf)
-import Text.Parsec.Language (haskell)
-
-import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Control.Exception hiding (handle, try)
-
--- import Data.Monoid
-import System.Directory
-import System.IO as SIO
--- import Data.Text.IO as TIO
-import Control.Monad.Reader
--- import Network
-
-import Data.Text.IO as TIO
-import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
-
-
 {------------- Parsing -------------}
 
 isNumeric :: String -> Bool
@@ -55,23 +23,12 @@ withHelper :: [LispVal] -> WExpr
 withHelper ((List ((Symbol s):body:[])):xs:[]) = (WithW s (parser body) (parser xs))
 withHelper _ = error "malformed withHelper"
 
--- letExtract :: LispVal -> (String, WExpr)
--- letExtract (List ((Symbol s):body)) = (s, (parser (last body)))
--- letExtract _ = error "malformed let-extract"
-
-
 letExtract :: LispVal -> (String, WExpr)
 letExtract (List ((Symbol s):body:[])) = (s, (parser body))
 letExtract _ = error "malformed let-extract"
 
-
 letHelper :: [LispVal] -> WExpr
 letHelper l = (LetW (map letExtract (unWrapBracket (head l))) (parser (last l)))
-
-
-
--- withHelper2 :: [LispVal] -> WExpr
--- withHelper2 ((List ((Symbol s) : body : [])) : res : [])
 
 funHelper :: LispVal -> [LispVal]
 funHelper (List v) = v
@@ -176,13 +133,6 @@ switchSymbol "list->string" lv = (CastExpressionW (parser (head lv)) (StringT))
 switchSymbol "string->number" lv = (CastExpressionW (parser (head lv)) (NumberT))
 switchSymbol "integer->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
 switchSymbol "double->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
-
-
-
-{- 
-TODO more here for each type conversion
--}
-
 
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 

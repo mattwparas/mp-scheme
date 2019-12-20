@@ -714,6 +714,9 @@ main = hspec $ do
             res <- eval statement
             res `shouldBe` ["15"]
 
+        -- it "struct-set" $ do
+        --     let statement = "(struct-set key (struct [key => \"value\"] [key2 => 15] [key3 => 25]))"
+
         -- it "throws an error when you can't successfully cast" $ do
         --     let statement = "(string->integer \"test\")"
         --     -- res <- eval statement

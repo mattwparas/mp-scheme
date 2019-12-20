@@ -42,7 +42,6 @@ execRepl = do
     stdlib <- (readFile "../lib/stdlib.scm")
     unless (input == ":quit")
         $ (wrapperRepl' input stdlib)
-        -- $ print' (eval' input)
         >> execRepl
 
 read' :: IO String
