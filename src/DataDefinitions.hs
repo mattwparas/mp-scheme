@@ -145,14 +145,14 @@ newtype Eval a = Eval { unEval :: ReaderT WExpr IO a }
       
       
 -- Replace this with a HashMap
-data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
+-- data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
 
 -- Replace every instance of [FunDef] with HashMap
 data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
 
 
 type FunCtx = Map.Map String Expr
-type DefSubMap = Map.Map String ExprValue
+type DefSub = Map.Map String ExprValue
 
 
 

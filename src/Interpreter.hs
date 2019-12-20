@@ -100,13 +100,21 @@ putTextFile fileName msg handle = do
     else error (" file does not exist: " ++ fileName)
     
 
+-- -- Lookup symbol to see if in DS, if not check global function definitions
+-- lookupDS :: LispVal -> FunCtx -> DefSub -> Eval ExprValue
+-- lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
+-- lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
+--     if s1 == s2
+--         then return val
+--         else (lookupDS (Symbol s1) funDefs rest)
+-- lookupDS _ _ _ = error "lookupDS malformed"
+
 -- Lookup symbol to see if in DS, if not check global function definitions
 lookupDS :: LispVal -> FunCtx -> DefSub -> Eval ExprValue
-lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
-lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
-    if s1 == s2
-        then return val
-        else (lookupDS (Symbol s1) funDefs rest)
+lookupDS (Symbol s1) funDefs ds = 
+    if Map.member s1 ds
+        then return (ds Map.! s1)
+        else (interp (lookupFundefs s1 funDefs) funDefs Map.empty)
 lookupDS _ _ _ = error "lookupDS malformed"
 
 
@@ -243,7 +251,10 @@ evalEquality _ _ = BoolV False
 
 appEval :: ExprValue -> ExprValue -> FunCtx -> Eval ExprValue
 -- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
-appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
+-- appEval (ClosureV paramName body ds) argVal funDefs = 
+--     (interp body funDefs (ASub paramName argVal ds))
+appEval (ClosureV paramName body ds) argVal funDefs = 
+    (interp body funDefs (Map.insert paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
 appEvalNoArgs :: ExprValue -> FunCtx -> Eval ExprValue
@@ -263,15 +274,15 @@ matchStrToBool "#True" = True
 matchStrToBool "#False" = False
 matchStrToBool _ = error "Boolean malformed"
 
-defSubHelper :: [String] -> FunCtx -> [Expr] -> DefSub -> Eval DefSub
-defSubHelper [] funDefs [] ds = return (MtSub)
-defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
-defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
-defSubHelper (x:xs) funDefs (b:bs) ds = 
-    do 
-        res <- (interp b funDefs ds)
-        defs <- (defSubHelper xs funDefs bs ds)
-        return (ASub x res defs)
+-- defSubHelper :: [String] -> FunCtx -> [Expr] -> DefSub -> Eval DefSub
+-- defSubHelper [] funDefs [] ds = return (Map.empty)
+-- defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
+-- defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
+-- defSubHelper (x:xs) funDefs (b:bs) ds = 
+--     do 
+--         res <- (interp b funDefs ds)
+--         defs <- (defSubHelper xs funDefs bs ds)
+--         return (ASub x res defs)
 
 checkNumber :: ExprValue -> Number
 checkNumber (NumV n) = n
@@ -640,7 +651,7 @@ getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
             -- TODO pick up here
 interpWrap :: Expr -> FunCtx -> Eval ExprValue
-interpWrap s funDefs = interp s funDefs (MtSub)
+interpWrap s funDefs = interp s funDefs (Map.empty)
 
 multipleInterp :: [Expr] -> FunCtx -> Eval [ExprValue]
 multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
