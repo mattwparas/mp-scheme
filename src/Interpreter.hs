@@ -562,9 +562,16 @@ castType (StringV s) (DoubT) =
     if isDouble s
         then (DoubV (read s::Double))
         else error ("Cannot cast value from string to double: " ++ s)
-
+castType (StringV s) (NumberT) =
+    if isInteger s
+        then (NumV (read s::Integer))
+        else if isDouble s
+            then (DoubV (read s::Double))
+            else error ("Cannot cast value from string to number: " ++ s)
 castType (StringV s) (ListT) = (ListV (map (\x -> (CharV x)) s))
 castType (ListV l) (StringT) = (StringV (map charOp l))
+castType (NumV n) (DoubT) = (DoubV (fromIntegral n))
+castType (DoubV n) (IntT) = (NumV (round n))
 
 castType l r = error ("not implemented for: " ++ (show r))
 

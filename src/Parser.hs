@@ -143,6 +143,7 @@ switchSymbol "empty?" lv = (EmptyW (parser (head lv)))
 switchSymbol "slurp!" lv = (SlurpW (parser (head lv)))
 switchSymbol "spit!" lv = (SpitW (parser (head lv)) (parser (last lv)))
 
+-- Checking Types
 switchSymbol "integer?" lv = (CheckTypeW (parser (head lv)) (IntT)) -- should be ExprValues, not WExpr
 switchSymbol "double?" lv = (CheckTypeW (parser (head lv)) (DoubT))
 switchSymbol "string?" lv = (CheckTypeW (parser (head lv)) (StringT))
@@ -151,7 +152,6 @@ switchSymbol "list?" lv = (CheckTypeW (parser (head lv)) (ListT))
 switchSymbol "closure?" lv = (CheckTypeW (parser (head lv)) (ClosureT))
 switchSymbol "bool?" lv = (CheckTypeW (parser (head lv)) (BoolT))
 switchSymbol "struct?" lv = (CheckTypeW (parser (head lv)) (StructT))
-
 switchSymbol "number?" lv = (CheckTypeW (parser (head lv)) (NumberT))
 
 
@@ -161,12 +161,17 @@ switchSymbol "get!" lv = (GetW (parser (head lv)))
 switchSymbol "begin" lv = (BeginW (map parser lv))
 switchSymbol "struct" lv = structHelper lv
 
+
 switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
 
+-- Casting Types
 switchSymbol "string->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
 switchSymbol "string->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
 switchSymbol "string->list" lv = (CastExpressionW (parser (head lv)) (ListT))
 switchSymbol "list->string" lv = (CastExpressionW (parser (head lv)) (StringT))
+switchSymbol "string->number" lv = (CastExpressionW (parser (head lv)) (NumberT))
+switchSymbol "integer->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
+switchSymbol "double->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
 
 
 

@@ -693,3 +693,30 @@ main = hspec $ do
             let statement = "(append \"apple\" \"sauce\")"
             res <- eval statement
             res `shouldBe` ["\"applesauce\""]
+
+        it "string->number" $ do
+            let statement = "(string->number \"15\")"
+            res <- eval statement
+            res `shouldBe` ["15"]
+
+        it "string->number" $ do
+            let statement = "(string->number \"15.0\")"
+            res <- eval statement
+            res `shouldBe` ["15.0"]
+
+        it "integer->double" $ do
+            let statement = "(integer->double 15)"
+            res <- eval statement
+            res `shouldBe` ["15.0"]
+
+        it "double->integer" $ do
+            let statement = "(double->integer 15.0)"
+            res <- eval statement
+            res `shouldBe` ["15"]
+
+        -- it "throws an error when you can't successfully cast" $ do
+        --     let statement = "(string->integer \"test\")"
+        --     -- res <- eval statement
+        --     eval statement `shouldThrow` SomeException
+
+
