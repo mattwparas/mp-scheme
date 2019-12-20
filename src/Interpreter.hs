@@ -101,7 +101,7 @@ putTextFile fileName msg handle = do
     
 
 -- Lookup symbol to see if in DS, if not check global function definitions
-lookupDS :: LispVal -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+lookupDS :: LispVal -> FunCtx -> DefSub -> Eval ExprValue
 lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
 lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
     if s1 == s2
@@ -109,12 +109,19 @@ lookupDS (Symbol s1) funDefs (ASub s2 val rest) =
         else (lookupDS (Symbol s1) funDefs rest)
 lookupDS _ _ _ = error "lookupDS malformed"
 
-lookupFundefs :: String -> [GlobalFunDef] -> Expr
-lookupFundefs s [] = error ("interp - free identifier " ++ s)
-lookupFundefs s ((FundefG funName closure):xs) = 
-    if funName == s
-        then closure
-        else (lookupFundefs s xs)
+
+lookupFundefs :: String -> FunCtx -> Expr
+lookupFundefs s ctx = 
+    if Map.member s ctx
+        then ctx Map.! s
+        else error ("interp - free identifier " ++ s)
+
+-- lookupFundefs :: String -> FunCtx -> Expr
+-- lookupFundefs s [] = error ("interp - free identifier " ++ s)
+-- lookupFundefs s ((FundefG funName closure):xs) = 
+--     if funName == s
+--         then closure
+--         else (lookupFundefs s xs)
 
 -- TODO abstract numOp to any operator, use generically in place of all of these
 -- TRY TO FIX THIS
@@ -234,12 +241,12 @@ evalEquality (NumV l) (NumV r) = BoolV (l == r)
 evalEquality (BoolV l) (BoolV r) = BoolV (l == r)
 evalEquality _ _ = BoolV False
 
-appEval :: ExprValue -> ExprValue -> [GlobalFunDef] -> Eval ExprValue
+appEval :: ExprValue -> ExprValue -> FunCtx -> Eval ExprValue
 -- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
 appEval (ClosureV paramName body ds) argVal funDefs = (interp body funDefs (ASub paramName argVal ds))
 appEval _ _ _ = error "expected function"
 
-appEvalNoArgs :: ExprValue -> [GlobalFunDef] -> Eval ExprValue
+appEvalNoArgs :: ExprValue -> FunCtx -> Eval ExprValue
 -- appEval (ClosureV paramName body ds)  funDefs = (interp body funDefs ds) -- make it empty list
 appEvalNoArgs (ClosureV paramName body ds) funDefs = (interp body funDefs ds)
 appEvalNoArgs _ _ = error "expected function"
@@ -256,7 +263,7 @@ matchStrToBool "#True" = True
 matchStrToBool "#False" = False
 matchStrToBool _ = error "Boolean malformed"
 
-defSubHelper :: [String] -> [GlobalFunDef] -> [Expr] -> DefSub -> Eval DefSub
+defSubHelper :: [String] -> FunCtx -> [Expr] -> DefSub -> Eval DefSub
 defSubHelper [] funDefs [] ds = return (MtSub)
 defSubHelper [] funDefs (x:xs) ds = error "interp: wrong arity"
 defSubHelper (x:xs) funDefs [] ds = error "interp: wrong arity"
@@ -320,7 +327,7 @@ appendOPp l r = error ("Append used between non matching lists or strings: " ++ 
 
 
 -- TODO come back here
-interp :: Expr -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+interp :: Expr -> FunCtx -> DefSub -> Eval ExprValue
 interp (Numb n) _ _ = return (NumV n)
 interp (Doub n) _ _ = return (DoubV n)
 interp (Boolean b) _ _ = return (BoolV (matchStrToBool b))
@@ -514,7 +521,7 @@ getStructHelper name (StructV (x:xs)) =
         else getStructHelper name (StructV xs)
 getStructHelper _ _ = error "malformed getStructHelper"
 
-beginHelper :: [Expr] -> [GlobalFunDef] -> DefSub -> Eval ExprValue
+beginHelper :: [Expr] -> FunCtx -> DefSub -> Eval ExprValue
 beginHelper [] funDefs ds = error ("Empty begin statement!")
 beginHelper (x:xs) funDefs ds = do
     res <- (interp x funDefs ds)
@@ -614,22 +621,28 @@ structHuh (StructV _) = BoolV True
 structHuh _ = BoolV False
 
 
-parseFunDef :: LispVal -> GlobalFunDef
-parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
-    (FundefG funName (compile (FunW (map extractSymbol args) (parser body))))
+
+parseFunDef :: LispVal -> (String, Expr)
+parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) =
+    (funName, (compile (FunW (map extractSymbol args) (parser body))))
 parseFunDef _ = error "parseFunDef - malformed function"
 
-parseFunDefs :: [LispVal] -> [GlobalFunDef]
-parseFunDefs x = (map parseFunDef x)
+-- parseFunDef :: LispVal -> GlobalFunDef
+-- parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) = 
+--     (FundefG funName (compile (FunW (map extractSymbol args) (parser body))))
+-- parseFunDef _ = error "parseFunDef - malformed function"
 
-getFunDefs :: String -> [GlobalFunDef]
+parseFunDefs :: [LispVal] -> FunCtx
+parseFunDefs x = Map.fromList (map parseFunDef x)
+
+getFunDefs :: String -> FunCtx
 getFunDefs s = (parseFunDefs (getAllFunDefs (lexer s)))
 
             -- TODO pick up here
-interpWrap :: Expr -> [GlobalFunDef] -> Eval ExprValue
+interpWrap :: Expr -> FunCtx -> Eval ExprValue
 interpWrap s funDefs = interp s funDefs (MtSub)
 
-multipleInterp :: [Expr] -> [GlobalFunDef] -> Eval [ExprValue]
+multipleInterp :: [Expr] -> FunCtx -> Eval [ExprValue]
 multipleInterp s funDefs = (mapM (\x -> (interpWrap x funDefs)) s)
 
 charFormatting :: Char -> String
@@ -673,5 +686,5 @@ evalWithStdLib expr file = do
     let res = 
             (multipleInterp 
             (compileMap (parserWrapper (getAllExprs (lexer expr))))
-            ((getFunDefs file) ++ (getFunDefs expr)))
+            (Map.unions [(getFunDefs file), (getFunDefs expr)]))
     (runReaderT (unEval (multipleInterpValL res)) (StringW ""))

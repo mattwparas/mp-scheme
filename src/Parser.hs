@@ -164,6 +164,10 @@ switchSymbol "struct" lv = structHelper lv
 
 switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
 
+
+-- switchSymbol "struct-set" lv = (StructSetW (extractSymbol (head lv)) (parser (lv !! 1)) (parser (lv !! 2)))
+
+
 -- Casting Types
 switchSymbol "string->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
 switchSymbol "string->integer" lv = (CastExpressionW (parser (head lv)) (IntT))

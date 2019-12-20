@@ -8,7 +8,9 @@ import Data.Tree
 import Text.Parsec
 import Text.Parsec.String
 import Data.Either
-import Data.Map (Map)
+-- import Data.Map (Map)
+
+
 import qualified Data.Map as Map
 import qualified Data.Functor.Identity as F
 import qualified Text.Parsec.Prim as Prim
@@ -31,8 +33,8 @@ import System.IO as SIO
 import Control.Monad.Reader
 -- import Network
 
-import Data.Text.IO as TIO
-import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
+-- import Data.Text.IO as TIO
+-- import Data.Text as T hiding (last, unwords, map, tail, head, length, reverse, filter, try, take)
 
 
 data LispVal
@@ -91,6 +93,7 @@ data WExpr =
     | CastExpressionW WExpr ExprValueT
     | CheckTypeW WExpr ExprValueT
     deriving (Eq, Show)
+
       
 data Expr = 
     Numb Integer
@@ -146,6 +149,18 @@ data DefSub = MtSub | ASub Symbol ExprValue DefSub deriving (Eq, Show)
 
 -- Replace every instance of [FunDef] with HashMap
 data GlobalFunDef = FundefG String Expr deriving (Eq, Show)
+
+
+type FunCtx = Map.Map String Expr
+type DefSubMap = Map.Map String ExprValue
+
+
+
+
+-- type ValCtx = Map.Map T.Text LispVal
+-- type FnCtx  = Map.Map T.Text LispVal
+
+
 
 data ExprValueT =
     NumberT
