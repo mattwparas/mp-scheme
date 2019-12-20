@@ -13,11 +13,8 @@ import qualified Data.Map as Map
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Exception hiding (handle, try)
-
--- import Data.Monoid
 import System.Directory
 import System.IO as SIO
--- import Data.Text.IO as TIO
 import Control.Monad.Reader
 import Network.HTTP
 
@@ -53,9 +50,6 @@ printLnIO e = do
     res <- SIO.putStrLn (interpVal e)
     return (NullV)
 
-
--- TODO come back here
-
 wSlurp :: ExprValue -> Eval ExprValue
 wSlurp (StringV txt) = liftIO $ openURL txt
 wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
@@ -65,8 +59,6 @@ openURL x = do
   req  <- simpleHTTP (getRequest $ x)
   body <- getResponseBody req
   return $ StringV $ body
-
-
 
 put :: ExprValue -> ExprValue -> Eval ExprValue
 put (StringV path) (StringV msg) = liftIO $ wFilePut path msg
@@ -86,16 +78,6 @@ putTextFile fileName msg handle = do
     then (TIO.hPutStr handle (T.pack msg)) >> (return $ StringV msg)
     else error (" file does not exist: " ++ fileName)
     
-
--- -- Lookup symbol to see if in DS, if not check global function definitions
--- lookupDS :: LispVal -> FunCtx -> DefSub -> Eval ExprValue
--- lookupDS (Symbol s1) funDefs (MtSub) = interp (lookupFundefs s1 funDefs) funDefs (MtSub)
--- lookupDS (Symbol s1) funDefs (ASub s2 val rest) = 
---     if s1 == s2
---         then return val
---         else (lookupDS (Symbol s1) funDefs rest)
--- lookupDS _ _ _ = error "lookupDS malformed"
-
 -- Lookup symbol to see if in DS, if not check global function definitions
 lookupDS :: LispVal -> FunCtx -> DefSub -> Eval ExprValue
 lookupDS (Symbol s1) funDefs ds = 
@@ -111,18 +93,6 @@ lookupFundefs s ctx =
         then ctx Map.! s
         else error ("interp - free identifier " ++ s)
 
--- lookupFundefs :: String -> FunCtx -> Expr
--- lookupFundefs s [] = error ("interp - free identifier " ++ s)
--- lookupFundefs s ((FundefG funName closure):xs) = 
---     if funName == s
---         then closure
---         else (lookupFundefs s xs)
-
--- TODO abstract numOp to any operator, use generically in place of all of these
--- TRY TO FIX THIS
--- numOp :: ExprValue -> ExprValue -> (Integer -> Integer -> Integer) -> ExprValue
--- numOP (NumV l) (NumV r) fn = (NumV ((fn) l r))
--- numOp _ _ _ = (error "Wrong value given to numerical operator")
 
 numOpAdd :: ExprValue -> ExprValue -> ExprValue
 numOpAdd (NumV l) (NumV r) = (NumV (l + r))
@@ -418,7 +388,6 @@ interp (Or lhs rhs) funDefs ds = do
             if r == (BoolV True)
             then return (BoolV True)
             else return (BoolV False)
-
 
 interp (UserInput) funDefs ds = do
     userInput

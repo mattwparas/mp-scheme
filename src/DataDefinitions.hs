@@ -3,8 +3,6 @@
 
 module DataDefinitions where
 
--- import Data.Typeable (Typeable)
-
 import qualified Data.Map as Map
 
 import Control.Monad.IO.Class

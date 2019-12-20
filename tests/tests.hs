@@ -6,7 +6,6 @@ import Interpreter
 
 {-
 
-
 runhaskell -i/Users/mwparas/Documents/schemefun/mp-scheme/src tests.hs
 
 -}
