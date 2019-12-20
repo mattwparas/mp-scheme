@@ -594,44 +594,6 @@ castType (DoubV n) (IntT) = (NumV (round n))
 castType l r = error ("not implemented for: " ++ (show r))
 
 
-integerHuh :: ExprValue -> ExprValue
-integerHuh (NumV _) = BoolV True
-integerHuh _ = BoolV False
-
-doubleHuh :: ExprValue -> ExprValue
-doubleHuh (DoubV _) = BoolV True
-doubleHuh _ = BoolV False
-
-closureHuh :: ExprValue -> ExprValue
-closureHuh (ClosureV _ _ _) = BoolV True
-closureHuh _ = BoolV False
-
-listHuh :: ExprValue -> ExprValue
-listHuh (ListV _) = BoolV True
-listHuh _ = BoolV False
-
-stringHuh :: ExprValue -> ExprValue
-stringHuh (StringV _) = BoolV True
-stringHuh _ = BoolV False
-
-charHuh :: ExprValue -> ExprValue
-charHuh (CharV _) = BoolV True
-charHuh _ = BoolV False
-
-numberHuh :: ExprValue -> ExprValue
-numberHuh (DoubV _) = BoolV True
-numberHuh (NumV _) = BoolV True
-numberHuh _ = BoolV False
-
-boolHuh :: ExprValue -> ExprValue
-boolHuh (BoolV _) = BoolV True
-boolHuh _ = BoolV False
-
-structHuh :: ExprValue -> ExprValue
-structHuh (StructV _) = BoolV True
-structHuh _ = BoolV False
-
-
 
 parseFunDef :: LispVal -> (String, Expr)
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) =
