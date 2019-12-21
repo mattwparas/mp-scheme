@@ -17,8 +17,8 @@ print' lst = do
     mapM_ putStrLn res
 
 
-wrapper' :: String -> IO ()
-wrapper' s = catch (print' (eval s)) handler
+wrapper' :: String -> String -> IO ()
+wrapper' s path = catch (print' (evalWithStdLib s path)) handler
     where
         handler :: SomeException -> IO()
         handler ex = putStrLn $ "Caught Exception: " ++ show ex
@@ -33,7 +33,8 @@ main = do
             execRepl
         else do
             code <- readFile (args !! 0)
-            wrapper' code
+            stdlib <- readFile "../lib/stdlib.scm"
+            wrapper' code stdlib
 
 
 execRepl :: IO ()

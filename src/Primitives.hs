@@ -19,6 +19,17 @@ import System.Directory
 import System.IO as SIO
 import Control.Monad.Reader
 import Network.HTTP
+import Network.HTTP.Conduit
+
+import Data.ByteString.Lazy.Char8 as Char8 (unpack)
+
+
+-- import Data.ByteString.Char8 as C8 (unpack)
+-- import Data.ByteString.Lazy.Internal.ByteString as C8 (unpack)
+
+-- import Data.ByteString.Char8 as C8 (unpack)
+-- import qualified Data.ByteString.Lazy as LBS
+-- import qualified Data.ByteString.Char8 as BS
 
 charOp :: ExprValue -> Char
 charOp (CharV c) = c
@@ -213,7 +224,7 @@ printLnIO e = do
     return (NullV)
 
 wSlurp :: ExprValue -> Eval ExprValue
-wSlurp (StringV txt) = liftIO $ openURL txt
+wSlurp (StringV txt) = liftIO $ openURLhttps txt
 wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
 
 openURL :: String -> IO ExprValue
@@ -227,6 +238,14 @@ put (StringV path) (StringV msg) = liftIO $ wFilePut path msg
 put (StringV _) val = 
     error ("put expects string in the second argument (try using show), instead got : " ++ (show val))
 put val _ = error ("put expected string, instead got: " ++ (show val))
+
+
+openURLhttps :: String -> IO ExprValue
+openURLhttps x = do
+    res <- (simpleHttp x)
+    let body = Char8.unpack res
+    return $ StringV $ body
+
 
 
 wFilePut :: String -> String -> IO ExprValue
