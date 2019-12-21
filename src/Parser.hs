@@ -121,6 +121,10 @@ switchSymbol "struct" lv = structHelper lv
 
 switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
 
+-- TOOD come back to this, need to just rearrange when I'm calling this - it can't be here
+-- needs tobe in interpreter
+switchSymbol "string->jsexpr" lv = (StringToJsexprW (parser (head lv)))
+
 
 -- switchSymbol "struct-set" lv = (StructSetW (extractSymbol (head lv)) (parser (lv !! 1)) (parser (lv !! 2)))
 
@@ -136,12 +140,19 @@ switchSymbol "double->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
 
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 
+getString :: WExpr -> String
+getString (StringW s) = s
+getString e = error ("wrong value given to get string" ++ (show e))
 
 appHelper :: [LispVal] -> WExpr
 appHelper lv = (AppW (parser (head lv)) (map parser (tail lv)))
 
 isBoolean :: String -> Bool
-isBoolean s = (s == "#t") || (s == "#f") || (s == "#true") || (s == "#false") || (s == "#True") || (s == "#False")
+isBoolean s = 
+    (s == "#t") || (s == "#f") || 
+    (s == "#true") || (s == "#false") || 
+    (s == "#True") || (s == "#False") ||
+    (s == "true") || (s == "false")
 
 unWrapBracket :: LispVal -> [LispVal]
 unWrapBracket (ListVal l) = l
@@ -150,6 +161,26 @@ unWrapBracket e = error ("unwrapping a bracketed value threw an error: " ++ (sho
 formatChar :: String -> Char
 formatChar "#/" = ' '
 formatChar s = (last s)
+
+group :: Int -> [LispVal] -> [[LispVal]]
+group _ [] = []
+group n l
+  | n > 0 = (take n l) : (group n (drop n l))
+  | otherwise = error "Negative or zero n"
+
+
+extractString :: LispVal -> String
+extractString (StringVal s) = s
+extractString e = error ("using extract string on not a string: " ++ (show e))
+
+braceHelper :: [LispVal] -> WExpr
+braceHelper lst = StructW (map (\x -> ((extractString (head x)), (parser (last x)))) (group 2 lst))
+
+
+
+-- filterCommas :: LispVal -> LispVal
+-- filterCommas (ListVal l) = 
+--     (ListVal)
 
 parseSymbol :: String -> WExpr
 parseSymbol s =     
@@ -171,6 +202,7 @@ parser (List ((List x):xs)) = appHelper ((List x):xs)
 parser (List ((ListVal x):xs)) = (ListW (map parser x)) -- this could be my cond case!
 parser (List ((Symbol x):xs)) = switchSymbol x xs
 parser (ListVal x) = (ListW (map parser x))
+parser (ListJson lst) = braceHelper lst
 parser _ = error "pattern not matched"
 
 parserWrapper :: [LispVal] -> [WExpr]

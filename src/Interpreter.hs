@@ -242,6 +242,12 @@ interp (CheckTypeE expr t) funDefs ds = do
     exp <- interp expr funDefs ds
     return (checkType exp t)
 
+interp (StringToJsexpr expr) funDefs ds = do
+    res <- interp expr funDefs ds
+    let str = (compile (parser (sexpLexer (stringOpV (res)))))
+    jsexp <- interp str Map.empty Map.empty
+    return jsexp
+
 
 parseFunDef :: LispVal -> (String, Expr)
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) =

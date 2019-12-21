@@ -106,6 +106,7 @@ compile (BeginW exprs) = (BeginE (map compile exprs))
 
 compile (CastExpressionW expr t) = (CastExpression (compile expr) t)
 compile (CheckTypeW expr t) = (CheckTypeE (compile expr) t)
+compile (StringToJsexprW expr) = (StringToJsexpr (compile expr))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

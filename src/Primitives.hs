@@ -162,6 +162,8 @@ matchStrToBool "#T" = True
 matchStrToBool "#F" = False
 matchStrToBool "#True" = True
 matchStrToBool "#False" = False
+matchStrToBool "true" = True
+matchStrToBool "false" = False
 matchStrToBool _ = error "Boolean malformed"
 
 -- TODO get rid of this?
@@ -238,6 +240,9 @@ putTextFile fileName msg handle = do
     then (TIO.hPutStr handle (T.pack msg)) >> (return $ StringV msg)
     else error (" file does not exist: " ++ fileName)
 
+stringOpV :: ExprValue -> String
+stringOpV (StringV s) = s
+stringOpV e = error ("string op problem: " ++ (show e))
 
 interpVal :: ExprValue -> String
 interpVal (NumV n) = show n

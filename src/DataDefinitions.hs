@@ -13,7 +13,7 @@ data LispVal
       | StringVal String
       | List [LispVal]
       | ListVal [LispVal] -- direct translation to lists
-      | VectorVal [LispVal]
+      | ListJson [LispVal]
       deriving (Eq, Show)
 
 
@@ -62,6 +62,7 @@ data WExpr =
     | StructGetW String WExpr
     | CastExpressionW WExpr ExprValueT
     | CheckTypeW WExpr ExprValueT
+    | StringToJsexprW WExpr
     deriving (Eq, Show)
 
       
@@ -105,6 +106,7 @@ data Expr =
     | StructGetE String Expr
     | CastExpression Expr ExprValueT
     | CheckTypeE Expr ExprValueT
+    | StringToJsexpr Expr
     deriving (Eq, Show)
 
 
