@@ -119,21 +119,21 @@ numOpCompGt (NumV l) (NumV r) = (BoolV (l > r))
 numOpCompGt (DoubV l) (DoubV r) = (BoolV (l > r))
 numOpCompGt (NumV l) (DoubV r) = (BoolV ((fromIntegral l) > r))
 numOpCompGt (DoubV l) (NumV r) = (BoolV (l > (fromIntegral r)))
-numOpCompGt _ _ = (error "Wrong value given to less than")
+numOpCompGt _ _ = (error "Wrong value given to greater than")
 
 numOpCompLtE :: ExprValue -> ExprValue -> ExprValue
 numOpCompLtE (NumV l) (NumV r) = (BoolV (l <= r))
 numOpCompLtE (DoubV l) (DoubV r) = (BoolV (l <= r))
 numOpCompLtE (NumV l) (DoubV r) = (BoolV ((fromIntegral l) <= r))
 numOpCompLtE (DoubV l) (NumV r) = (BoolV (l <= (fromIntegral r)))
-numOpCompLtE _ _ = (error "Wrong value given to less than")
+numOpCompLtE _ _ = (error "Wrong value given to less than or equal")
 
 numOpCompGtE :: ExprValue -> ExprValue -> ExprValue
 numOpCompGtE (NumV l) (NumV r) = (BoolV (l >= r))
 numOpCompGtE (DoubV l) (DoubV r) = (BoolV (l >= r))
 numOpCompGtE (NumV l) (DoubV r) = (BoolV ((fromIntegral l) >= r))
 numOpCompGtE (DoubV l) (NumV r) = (BoolV (l >= (fromIntegral r)))
-numOpCompGtE _ _ = (error "Wrong value given to less than")
+numOpCompGtE _ _ = (error "Wrong value given to greater than or equal")
 
 
 firstOp :: ExprValue -> ExprValue

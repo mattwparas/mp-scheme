@@ -176,12 +176,6 @@ extractString e = error ("using extract string on not a string: " ++ (show e))
 braceHelper :: [LispVal] -> WExpr
 braceHelper lst = StructW (map (\x -> ((extractString (head x)), (parser (last x)))) (group 2 lst))
 
-
-
--- filterCommas :: LispVal -> LispVal
--- filterCommas (ListVal l) = 
---     (ListVal)
-
 parseSymbol :: String -> WExpr
 parseSymbol s =     
     if isInteger s
