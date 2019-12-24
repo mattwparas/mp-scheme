@@ -68,6 +68,10 @@ structHelper lst =
 
 switchSymbol :: String -> [LispVal] -> WExpr
 switchSymbol "+" lv = (AddW (map parser lv)) -- TODO error checking
+
+-- switchSymbol "applytest" lv = (AddW (map parser lv)) -- TODO error checking
+
+
 switchSymbol "-" lv = (SubW (map parser lv))
 switchSymbol "*" lv = (MultW (map parser lv))
 switchSymbol "/" lv = (DivW (map parser lv))
@@ -118,7 +122,7 @@ switchSymbol "get!" lv = (GetW (parser (head lv)))
 switchSymbol "begin" lv = (BeginW (map parser lv))
 switchSymbol "struct" lv = structHelper lv
 
-
+-- TODO come back to this with state!
 switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
 
 -- TOOD come back to this, need to just rearrange when I'm calling this - it can't be here
@@ -138,7 +142,13 @@ switchSymbol "string->number" lv = (CastExpressionW (parser (head lv)) (NumberT)
 switchSymbol "integer->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
 switchSymbol "double->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
 
+switchSymbol "apply" lv = (ApplyW (extractSymbol (head lv)) (parser (last lv)))
+
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
+
+applyHelper :: [LispVal] -> WExpr
+applyHelper ((Symbol fn):xs) = switchSymbol fn xs
+
 
 getString :: WExpr -> String
 getString (StringW s) = s

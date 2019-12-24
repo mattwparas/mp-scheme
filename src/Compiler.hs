@@ -12,7 +12,7 @@ leftFoldOptimization fnW fn args =
         then error "Compile - leftFoldOptimization with no arguments"
         else if (length args == 2)
             then (fn (compile (head args)) (compile (last args)))
-            else if (length args == 1)
+            else if (length args == 1) -- TODO handle list case here?????
                 then (compile (head args))
                 -- else (fn (compile (fnW (take 2 args))) (compile (fnW (drop 2 args))))
                 else (fn (compile (fnW (getAllButLast args))) (compile (last args)))
@@ -34,8 +34,11 @@ compFoldOptimization fnW fn args =
         else if (length args == 2) -- this makes, no sense
             then (fn (compile (head args)) (compile (last args)))
             else if (length args == 1)
-                then (Boolean "#t")
+                then (Boolean "#t") -- TODO handle list case here
                 else (And (fn (compile (head args)) (compile (head (tail args)))) (compile (fnW (tail args))))
+
+
+-- stringToPrim :: String -> WExpr
 
 
 
@@ -46,7 +49,7 @@ compile (CharW c) = CharE c
 compile (BooleanW b) = Boolean b
 compile (SymW s) = Sym s
 compile (StringW s) = StringE s
-compile (AddW args) = boolFoldOptimization AddW Add args
+compile (AddW args) = leftFoldOptimization AddW Add args
 compile (SubW args) = leftFoldOptimization SubW Sub args
 compile (MultW args) = leftFoldOptimization MultW Mult args
 compile (DivW args) = leftFoldOptimization DivW Div args
@@ -107,6 +110,9 @@ compile (BeginW exprs) = (BeginE (map compile exprs))
 compile (CastExpressionW expr t) = (CastExpression (compile expr) t)
 compile (CheckTypeW expr t) = (CheckTypeE (compile expr) t)
 compile (StringToJsexprW expr) = (StringToJsexpr (compile expr))
+-- compile (ApplyW prim expr) = (Apply prim expr)
+
+compile (ApplyW name lst) = (Apply name (compile lst))
 
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

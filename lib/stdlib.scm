@@ -1,3 +1,24 @@
+{- 
+Provide bindings for primitives for higher order functions
+-}
+(define (append x l) (append x l))
+(define (cons l r) (cons l r))
+(define (car pair) (car pair))
+(define (cdr pair) (cdr pair))
+(define (first pair) (first pair))
+(define (rest pair) (rest pair))
+(define (+ l r) (+ l r))
+(define (- l r) (- l r))
+(define (* l r) (* l r))
+(define (/ l r) (/ l r))
+(define (< l r) (< l r))
+(define (> l r) (> l r))
+(define (<= l r) (<= l r))
+(define (>= l r) (>= l r))
+(define (= l r) (= l r))
+
+
+
 (define (caar pair) (car (car pair)))
 (define (cadr pair) (car (cdr pair)))
 (define (cdar pair) (cdr (car pair)))
@@ -47,12 +68,23 @@
       (cons init (unfold func (func init) pred))))
 
 (define (empty) '())
+
+
+(define (range first last)
+  (if (>= first last)
+      '()
+      (cons first (range (+ first 1) last))))
+
 (define (fold f a l) (foldl f a l))
 (define (reduce f a l) (fold f a l))
 (define (max x num-list) (fold (lambda (y z) (if (> y z) y z)) x (cons 0 num-list)))
 (define (min x num-list) (fold (lambda (y z) (if (< y z) y z)) x (cons 536870911 num-list)))
 (define (length lst) (fold (lambda (x y) (+ x 1)) 0 lst))
-(define (reverse lst) (cdr (foldl (flip cons) '() lst)))
+
+
+(define (reverse l) (if (empty? l) '() (append (reverse (cdr l)) (list (car l)))))
+
+
 (define (mem-helper pred op) (lambda (acc next) (if (and (not acc) (pred (op next))) next acc)))
 (define (memq obj lst) (fold (mem-helper (curry eq? obj) id) #f lst))
 (define (memv obj lst) (fold (mem-helper (curry eqv? obj) id) #f lst))
@@ -63,5 +95,12 @@
 (define (map func lst) (foldr (lambda (x y) (cons (func x) y)) '() lst))
 (define (filter pred lst) (foldr (lambda (x y) (if (pred x) (cons x y) y)) '() lst))
 (define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
-(define (even x) (if (= x 0) #t (odd (- x 1))))
-(define (odd x) (if (= x 0) #f (even (- x 1))))
+(define (even? x) (if (= x 0) #t (odd? (- x 1))))
+(define (odd? x) (if (= x 0) #f (even? (- x 1))))
+
+(define (print! x) (println x))
+
+(define (sum lst) (reduce + 0 lst))
+(define (multiply lst) (reduce * 1 lst))
+
+

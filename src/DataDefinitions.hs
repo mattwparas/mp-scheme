@@ -63,6 +63,7 @@ data WExpr =
     | CastExpressionW WExpr ExprValueT
     | CheckTypeW WExpr ExprValueT
     | StringToJsexprW WExpr
+    | ApplyW String WExpr
     deriving (Eq, Show)
 
       
@@ -107,6 +108,7 @@ data Expr =
     | CastExpression Expr ExprValueT
     | CheckTypeE Expr ExprValueT
     | StringToJsexpr Expr
+    | Apply String Expr
     deriving (Eq, Show)
 
 

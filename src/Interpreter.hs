@@ -17,7 +17,7 @@ import Control.Exception hiding (handle, try)
 import System.Directory
 import System.IO as SIO
 import Control.Monad.Reader
-import Network.HTTP
+-- import Network.HTTP
 
 
 
@@ -247,6 +247,44 @@ interp (StringToJsexpr expr) funDefs ds = do
     let str = (compile (parser (sexpLexer (stringOpV (res)))))
     jsexp <- interp str Map.empty Map.empty
     return jsexp
+
+interp (Apply prim expr) funDefs ds = do
+    res <- interp expr funDefs ds
+    let listOfExprs = exprValueToWExpr res
+    let compilerType = matchStringToPrim prim
+    let result = compile (compilerType listOfExprs)
+    output <- interp result funDefs ds
+    return output
+
+
+
+exprValueToWExprAtom :: ExprValue -> WExpr
+exprValueToWExprAtom (NumV n) = NumbW n
+exprValueToWExprAtom (DoubV n) = DoubW n
+exprValueToWExprAtom (BoolV b) = BooleanW (boolToString b)
+exprValueToWExprAtom (StringV s) = StringW s
+exprValueToWExprAtom (CharV c) = CharW c
+exprValueToWExprAtom e = error ("Apply not supported for type: " ++ (show e))
+
+
+exprValueToWExpr :: ExprValue -> [WExpr]
+exprValueToWExpr (ListV l) = map exprValueToWExprAtom l
+exprValueToWExpr e = error ("Apply not supported for non lists: " ++ (show e))
+
+
+matchStringToPrim :: String -> ([WExpr] -> WExpr)
+matchStringToPrim "+" = AddW
+matchStringToPrim "-" = SubW
+matchStringToPrim "*" = MultW
+matchStringToPrim "/" = DivW
+matchStringToPrim "=" = EqualW
+matchStringToPrim "<" = LtW
+matchStringToPrim ">" = GtW
+matchStringToPrim "<=" = LtEW
+matchStringToPrim ">=" = GtEW
+matchStringToPrim "and" = AndW
+matchStringToPrim "or" = OrW
+matchStringToPrim e = error ("Apply not supported for function: " ++ e)
 
 
 parseFunDef :: LispVal -> (String, Expr)
