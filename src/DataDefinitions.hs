@@ -64,6 +64,7 @@ data WExpr =
     | CheckTypeW WExpr ExprValueT
     | StringToJsexprW WExpr
     | ApplyW String WExpr
+    | SleepW WExpr
     deriving (Eq, Show)
 
       
@@ -109,6 +110,7 @@ data Expr =
     | CheckTypeE Expr ExprValueT
     | StringToJsexpr Expr
     | Apply String Expr
+    | Sleep Expr
     deriving (Eq, Show)
 
 

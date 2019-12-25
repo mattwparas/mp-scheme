@@ -17,7 +17,9 @@ import Control.Exception hiding (handle, try)
 import System.Directory
 import System.IO as SIO
 import Control.Monad.Reader
+
 -- import Network.HTTP
+
 
 
 
@@ -256,6 +258,13 @@ interp (Apply prim expr) funDefs ds = do
     output <- interp result funDefs ds
     return output
 
+interp (Sleep expr) funDefs ds = do
+    res <- interp expr funDefs ds
+    sleepIOEval res
+
+head' :: [a] -> a  
+head' xs = case xs of [] -> error "No head for empty lists!"  
+                      (x:_) -> x 
 
 
 exprValueToWExprAtom :: ExprValue -> WExpr
@@ -290,6 +299,8 @@ matchStringToPrim e = error ("Apply not supported for function: " ++ e)
 parseFunDef :: LispVal -> (String, Expr)
 parseFunDef (List ((Symbol "define") : (List ((Symbol funName) : args) : body : []))) =
     (funName, (compile (FunW (map extractSymbol args) (parser body))))
+parseFunDef (List ((Symbol "define") : (Symbol funName) : body : [])) =
+    (funName, (compile (parser body))) -- TODO see if this works
 parseFunDef _ = error "parseFunDef - malformed function"
 
 parseFunDefs :: [LispVal] -> FunCtx

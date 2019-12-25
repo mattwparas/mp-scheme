@@ -20,6 +20,7 @@ import System.IO as SIO
 import Control.Monad.Reader
 import Network.HTTP
 import Network.HTTP.Conduit
+import Control.Concurrent
 
 import Data.ByteString.Lazy.Char8 as Char8 (unpack)
 
@@ -223,6 +224,20 @@ printLnIO e = do
     res <- SIO.putStrLn (interpVal e)
     return (NullV)
 
+
+
+sleepIOEval :: ExprValue -> Eval ExprValue
+sleepIOEval e = liftIO $ sleepIO e
+
+sleepIO :: ExprValue -> IO ExprValue
+sleepIO (DoubV n) = do
+    let val = (fromIntegral (round n) * 1000000)
+    res <- threadDelay val
+    return (NullV)
+sleepIO (NumV n) = do
+    res <- threadDelay (fromIntegral (n * 1000000))
+    return (NullV)
+
 wSlurp :: ExprValue -> Eval ExprValue
 wSlurp (StringV txt) = liftIO $ openURLhttps txt
 wSlurp val = error ("wSlurp expected a string, instead go: " ++ (show val))
@@ -258,6 +273,8 @@ putTextFile fileName msg handle = do
     if canWrite
     then (TIO.hPutStr handle (T.pack msg)) >> (return $ StringV msg)
     else error (" file does not exist: " ++ fileName)
+
+
 
 stringOpV :: ExprValue -> String
 stringOpV (StringV s) = s

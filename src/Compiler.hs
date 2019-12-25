@@ -114,5 +114,7 @@ compile (StringToJsexprW expr) = (StringToJsexpr (compile expr))
 
 compile (ApplyW name lst) = (Apply name (compile lst))
 
+compile (SleepW duration) = (Sleep (compile duration))
+
 compileMap :: [WExpr] -> [Expr]
 compileMap wEs = (map compile wEs)

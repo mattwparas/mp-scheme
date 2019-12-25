@@ -125,8 +125,7 @@ switchSymbol "struct" lv = structHelper lv
 -- TODO come back to this with state!
 switchSymbol "struct-get" lv = (StructGetW (extractSymbol (head lv)) (parser (last lv)))
 
--- TOOD come back to this, need to just rearrange when I'm calling this - it can't be here
--- needs tobe in interpreter
+-- TOOD come back to this
 switchSymbol "string->jsexpr" lv = (StringToJsexprW (parser (head lv)))
 
 
@@ -142,7 +141,12 @@ switchSymbol "string->number" lv = (CastExpressionW (parser (head lv)) (NumberT)
 switchSymbol "integer->double" lv = (CastExpressionW (parser (head lv)) (DoubT))
 switchSymbol "double->integer" lv = (CastExpressionW (parser (head lv)) (IntT))
 
+-- TODO come back to this
 switchSymbol "apply" lv = (ApplyW (extractSymbol (head lv)) (parser (last lv)))
+
+switchSymbol "sleep!" lv = (SleepW (parser (head lv)))
+
+
 
 switchSymbol s lv = (AppW (SymW s) (map parser lv)) -- TODO instead of this, go through the list of deferred subst FIRST then go through the fundefs
 

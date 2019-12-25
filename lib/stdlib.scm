@@ -67,7 +67,7 @@ Provide bindings for primitives for higher order functions
       (cons init '())
       (cons init (unfold func (func init) pred))))
 
-(define (empty) '())
+(define empty '())
 
 
 (define (range first last)
